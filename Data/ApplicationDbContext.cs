@@ -1,0 +1,98 @@
+﻿using CardShop.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace CardShop.Data
+{
+    
+
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+
+        //public DbSet<ApplicationUser> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Card> Cards { get; set; }
+        public DbSet<CardVariant> CardVariants { get; set; }
+        public DbSet<SealedProduct> SealedProducts { get; set; }
+        public DbSet<Accessory> Accessories { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            List<IdentityRole> roles = new List<IdentityRole>
+            {
+                new IdentityRole
+                {
+                    Name = "Admin",
+                    NormalizedName = "ADMIN"
+                },
+                new IdentityRole
+                {
+                    Name = "User",
+                    NormalizedName = "USER"
+                }
+            };
+
+            modelBuilder.Entity<IdentityRole>().HasData(roles);
+
+            modelBuilder.Entity<ApplicationUser>()
+                .HasMany(u => u.CartItems)
+                .WithOne(ci => ci.User)
+                .HasForeignKey(ci => ci.UserId);
+
+            modelBuilder.Entity<ApplicationUser>()
+                .HasMany(u => u.Orders)
+                .WithOne(o => o.User)
+                .HasForeignKey(o => o.UserId);
+
+            modelBuilder.Entity<Product>()
+                .HasMany(p => p.CartItems)
+                .WithOne(ci => ci.Product)
+                .HasForeignKey(ci => ci.ProductId);
+
+            modelBuilder.Entity<Product>()
+                .HasMany(p => p.OrderItems)
+                .WithOne(oi => oi.Product)
+                .HasForeignKey(oi => oi.ProductId);
+
+            modelBuilder.Entity<Card>()
+                .HasMany(c => c.Variants)
+                .WithOne(cv => cv.Card)
+                .HasForeignKey(cv => cv.CardId);
+
+            modelBuilder.Entity<CardVariant>()
+                .HasOne(cv => cv.Product)
+                .WithOne(p => p.CardVariant)
+                .HasForeignKey<CardVariant>(cv => cv.ProductId);
+
+            modelBuilder.Entity<SealedProduct>()
+                .HasOne(sp => sp.Product)
+                .WithOne(p => p.SealedProduct)
+                .HasForeignKey<SealedProduct>(sp => sp.ProductId);
+
+            modelBuilder.Entity<Accessory>()
+                .HasOne(a => a.Product)
+                .WithOne(p => p.Accessory)
+                .HasForeignKey<Accessory>(a => a.ProductId);
+
+            modelBuilder.Entity<Order>()
+                .HasMany(o => o.OrderItems)
+                .WithOne(oi => oi.Order)
+                .HasForeignKey(oi => oi.OrderId);
+
+            /*modelBuilder.Entity<ApplicationUser>().HasData(new ApplicationUser
+            {
+                Id = "admin-user-id",
+                DisplayName = "Admin",
+                Email = "admin@cardshop.com",
+                PasswordHash = "<hashed-password>"
+            });*/
+        }
+    }
+}
