@@ -24,7 +24,7 @@ namespace CardShop.Models
         // properites for singles cards
         public bool IsFoil { get; set; } = false;        
         [Required]
-        public CardCondition CardCondition { get; set; }
+        public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }
         public string? CollectionNumber { get; set; }

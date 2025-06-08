@@ -9,9 +9,9 @@ namespace api.Interfaces
     {
         Task<IEnumerable<Product>> GetAllAsync(ProductQueryObject query);
         Task<Product?> GetByIdAsync(int id);
-        Task<Product> CreateAsync(CreateProductDto dto);
+        Task<Product> CreateAsync(Product product);
         Task<Product?> UpdateAsync(int id, UpdateProductDto dto);
-        Task<bool> DeleteAsync(int id);
+        Task<Product?> DeleteAsync(int id);
         Task<int> CountAsync(); // For pagination metadata
     }
 }
