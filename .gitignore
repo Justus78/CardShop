@@ -2,6 +2,8 @@
 bin/
 obj/
 out/
+Migrations/
+migrations/
 
 # Rider / VS Code / Visual Studio specific
 .vscode/
@@ -29,7 +31,7 @@ packages/
 
 # App secrets and settings
 appsettings.Development.json
-appsettings.Local.json
+appsettings.json
 secrets.json
 
 # Others
