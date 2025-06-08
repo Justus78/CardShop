@@ -1,6 +1,50 @@
-appsettings.json
-appsettings.Development.json
+# Build results
+bin/
+obj/
+out/
 
-bin
-debug
-obj
+# Rider / VS Code / Visual Studio specific
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Auto-generated files
+*.dbmdl
+*.log
+*.tlog
+
+# Package directories
+packages/
+*.nupkg
+
+# Build configuration
+*.cache
+*.config
+*.dll
+*.exe
+*.pdb
+
+# App secrets and settings
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# Others
+*.vspscc
+*.vssscc
+*.tmp
+*.bak
+
+# Optional - ignore test results and coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.testresults
+
+# OS-specific files
+.DS_Store
+Thumbs.db
