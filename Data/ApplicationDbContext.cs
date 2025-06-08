@@ -10,13 +10,7 @@ namespace CardShop.Data
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
-
-        //public DbSet<ApplicationUser> Users { get; set; }
         public DbSet<Product> Products { get; set; }
-        public DbSet<Card> Cards { get; set; }
-        public DbSet<CardVariant> CardVariants { get; set; }
-        public DbSet<SealedProduct> SealedProducts { get; set; }
-        public DbSet<Accessory> Accessories { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
@@ -60,26 +54,6 @@ namespace CardShop.Data
                 .HasMany(p => p.OrderItems)
                 .WithOne(oi => oi.Product)
                 .HasForeignKey(oi => oi.ProductId);
-
-            modelBuilder.Entity<Card>()
-                .HasMany(c => c.Variants)
-                .WithOne(cv => cv.Card)
-                .HasForeignKey(cv => cv.CardId);
-
-            modelBuilder.Entity<CardVariant>()
-                .HasOne(cv => cv.Product)
-                .WithOne(p => p.CardVariant)
-                .HasForeignKey<CardVariant>(cv => cv.ProductId);
-
-            modelBuilder.Entity<SealedProduct>()
-                .HasOne(sp => sp.Product)
-                .WithOne(p => p.SealedProduct)
-                .HasForeignKey<SealedProduct>(sp => sp.ProductId);
-
-            modelBuilder.Entity<Accessory>()
-                .HasOne(a => a.Product)
-                .WithOne(p => p.Accessory)
-                .HasForeignKey<Accessory>(a => a.ProductId);
 
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderItems)
