@@ -1,3 +1,4 @@
+using api.Helpers;
 using api.Interfaces;
 using api.Repositories;
 using api.Services;
@@ -66,6 +67,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 
+// add services for the connection string with Cloudinary
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+
 // services for identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -104,6 +108,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IProductService, ProductRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 
 var app = builder.Build();
 
