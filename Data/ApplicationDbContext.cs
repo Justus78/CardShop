@@ -60,6 +60,15 @@ namespace CardShop.Data
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId);
 
+            modelBuilder.Entity<CartItem>()
+                .HasIndex(ci => new { ci.UserId, ci.ProductId })
+                .IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+
             /*modelBuilder.Entity<ApplicationUser>().HasData(new ApplicationUser
             {
                 Id = "admin-user-id",
