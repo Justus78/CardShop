@@ -1,10 +1,12 @@
 ﻿using api.DTOs.Product;
 using api.Helpers;
 using api.Interfaces;
+using api.Services;
 using CardShop.Data;
 using CardShop.Models;
 using CloudinaryDotNet;
 using Microsoft.EntityFrameworkCore;
+using System.Numerics;
 using static api.Enums.ProductEnums;
 
 namespace api.Repositories
@@ -13,10 +15,12 @@ namespace api.Repositories
     {
 
         private readonly ApplicationDbContext _context;
+        private readonly IPhotoService _photoService;
 
-        public ProductRepository(ApplicationDbContext context)
+        public ProductRepository(ApplicationDbContext context, IPhotoService photoService)
         {
             _context = context;
+            _photoService = photoService;
         } // end constructor
 
 
@@ -38,7 +42,30 @@ namespace api.Repositories
         {
             var productModel = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
 
-            if (productModel != null) { return null; }
+            if (productModel == null) 
+            { 
+                return null; 
+            }
+
+            // check for product image
+            if (productModel.CloudinaryId != null) // if product has an image on cloudinary
+            {
+                try
+                {
+                    // try to delete the image url
+                    var result = await _photoService.DeletePhotoAsync(productModel.CloudinaryId);
+
+                    // Check if the deletion was successful
+                    if (result.Result != "ok")
+                    {
+                        Console.WriteLine($"Failed to delete photo: {productModel.CloudinaryId}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting photo: {ex.Message}");
+                }
+            }
 
             _context.Products.Remove(productModel);
             await _context.SaveChangesAsync();
@@ -115,6 +142,19 @@ namespace api.Repositories
             if (product == null)
             { 
                 return null;
+            }
+
+            // check for new photo
+            if (dto.ProductImage != null)
+            {
+                if (product.CloudinaryId != null)
+                { // if there is already a pic
+                    await _photoService.DeletePhotoAsync(product.CloudinaryId); // delete current photo
+                }
+                // send new photo to cloudinary
+                var result = await _photoService.AddPhotoAsync(dto.ProductImage);
+                product.ImageUrl = result.Url.ToString(); // add new url to players
+                product.CloudinaryId = result.PublicId.ToString();
             }
 
             product.Name = dto.Name;

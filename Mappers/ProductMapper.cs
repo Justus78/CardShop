@@ -14,7 +14,6 @@ namespace api.Mappers
                 Description = dto.Description,
                 Price = dto.Price,
                 StockQuantity = dto.StockQuantity,
-                ImageUrl = dto.ImageUrl,
                 ProductCategory = dto.ProductCategory,
                 IsFoil = dto.IsFoil,
                 CardCondition = dto.CardCondition,

@@ -1,17 +1,37 @@
-﻿namespace CardShop.Models
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System.ComponentModel.DataAnnotations;
+
+namespace CardShop.Models
 {
     public class Order
     {
         public int Id { get; set; }
-        public string UserId { get; set; }
+
+        [Required]
+        public string? UserId { get; set; }
+
+        [ValidateNever]
         public ApplicationUser User { get; set; }
 
-        public DateTime OrderDate { get; set; }
-        public decimal TotalAmount { get; set; }
-        public string PaymentStatus { get; set; }
-        public string PaymentProvider { get; set; }
-        public string TransactionId { get; set; }
+        [Required]
+        public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 
-        public ICollection<OrderItem> OrderItems { get; set; }
+        [Required]
+        [StringLength(50)]
+        public string PaymentStatus { get; set; } = "Pending";
+
+        [Required]
+        [StringLength(50)]
+        public string PaymentProvider { get; set; } = "Unspecified";
+
+        [Required]
+        [StringLength(100)]
+        public string? TransactionId { get; set; }
+
+        [ValidateNever]
+        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+        [ValidateNever]
+        public decimal? TotalAmout => OrderItems?.Sum(i => i.Quantity * i.UnitPrice);
     }
 }

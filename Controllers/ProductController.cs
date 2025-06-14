@@ -2,7 +2,9 @@
 using api.Helpers;
 using api.Interfaces;
 using api.Mappers;
+using api.Services;
 using CardShop.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,10 +16,12 @@ namespace api.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly IPhotoService _photoService;
 
-        public ProductController(IProductService productService)
+        public ProductController(IProductService productService, IPhotoService photoService)
         {
             _productService = productService;
+            _photoService = photoService;
         }
 
         // GET: api/Product
@@ -51,7 +55,7 @@ namespace api.Controllers
         } // end get product by id
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateProductDto productDto)
+        public async Task<IActionResult> Create([FromForm] CreateProductDto productDto)
         {
             if (!ModelState.IsValid)
             {
@@ -60,6 +64,13 @@ namespace api.Controllers
 
 
             var productModel = productDto.ToProduct();
+
+            if (productDto.ProductImage != null) // if profilePic isnt null
+            {
+                var result = await _photoService.AddPhotoAsync(productDto.ProductImage); // add the photo to cloudinary
+                productModel.ImageUrl = result.Url.ToString(); // add the url from cloudinary to the product model
+                productModel.CloudinaryId = result.PublicId.ToString();
+            }
 
             // add logic for cloudingary later
 

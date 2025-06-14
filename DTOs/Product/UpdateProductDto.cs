@@ -14,7 +14,7 @@ namespace api.DTOs.Product
         public decimal Price { get; set; }
         [Required]
         public int StockQuantity { get; set; }
-        public string? ImageUrl { get; set; }
+        public IFormFile? ProductImage { get; set; }
 
         [Required]
         public ProductCategory ProductCategory { get; set; }
