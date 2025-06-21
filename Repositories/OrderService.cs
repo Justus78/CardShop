@@ -1,9 +1,10 @@
 ﻿using api.DTOs.Order;
 using api.Interfaces;
 using CardShop.Data;
-using CardShop.Models;
+using CardShop.Mappers;
+using Microsoft.EntityFrameworkCore;
 
-namespace api.Repositories
+namespace CardShop.Services
 {
     public class OrderService : IOrderService
     {
@@ -14,44 +15,46 @@ namespace api.Repositories
             _context = context;
         }
 
-        public async Task<OrderDto> CreateOrderAsync(string userId)
+        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string userId, string? transactionId = null)
         {
-            var cartItems = await _context.CartItems
-                .Include(ci => ci.Product)
-                .Where(ci => ci.UserId == userId)
-                .ToListAsync();
+            var order = OrderMapper.ToOrder(dto, userId);
 
-            if (!cartItems.Any())
-                throw new Exception("Cart is empty.");
+            if (!string.IsNullOrEmpty(transactionId))
+                order.TransactionId = transactionId; // add the transaction id from stripe to the order
 
-            var order = new Order
-            {
-                UserId = userId,
-                OrderItems = cartItems.Select(ci => new OrderItem
-                {
-                    ProductId = ci.ProductId,
-                    Quantity = ci.Quantity,
-                    Price = ci.Product.Price
-                }).ToList()
-            };
+            order.TotalAmount = order.OrderItems.Sum(i => i.Quantity * i.UnitPrice);
 
             _context.Orders.Add(order);
-            _context.CartItems.RemoveRange(cartItems);
             await _context.SaveChangesAsync();
 
-            return order.ToDto();
-        }
-
-        public async Task<List<OrderDto>> GetUserOrdersAsync(string userId)
-        {
-            var orders = await _context.Orders
+            var createdOrder = await _context.Orders
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+            return OrderMapper.ToOrderDto(createdOrder!);
+        }
+
+        public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)
+        {
+            var orders = await _context.Orders
                 .Where(o => o.UserId == userId)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 
-            return orders.Select(o => o.ToDto()).ToList();
+            return orders.Select(OrderMapper.ToOrderDto).ToList();
+        }
+
+        public async Task<OrderDto?> GetOrderByIdAsync(int orderId, string userId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+
+            return order == null ? null : OrderMapper.ToOrderDto(order);
         }
     }
-
 }

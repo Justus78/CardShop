@@ -1,15 +1,18 @@
 using api.Helpers;
 using api.Interfaces;
+using api.Models;
 using api.Repositories;
 using api.Services;
 using CardShop.Data;
 using CardShop.Models;
+using CardShop.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,10 +108,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddScoped<ITokenService, TokenService>();
+// configuration for stripe
+builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
+StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+
+
+builder.Services.AddScoped<ITokenService, api.Services.TokenService>();
 builder.Services.AddScoped<IProductService, ProductRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
+
 
 var app = builder.Build();
 

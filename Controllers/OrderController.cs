@@ -1,12 +1,13 @@
-﻿using api.Interfaces;
+﻿using api.DTOs.Order;
+using api.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace api.Controllers
+namespace CardShop.Controllers
 {
     [ApiController]
-    [Route("api/orders")]
+    [Route("api/order")]
     [Authorize]
     public class OrderController : ControllerBase
     {
@@ -17,28 +18,39 @@ namespace api.Controllers
             _orderService = orderService;
         }
 
-        private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
+        // POST: api/order
         [HttpPost]
-        public async Task<IActionResult> CreateOrder()
+        public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] CreateOrderDto dto)
         {
-            try
-            {
-                var order = await _orderService.CreateOrderAsync(UserId);
-                return Ok(order);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var order = await _orderService.CreateOrderAsync(dto, userId);
+            return Ok(order);
         }
 
+        // GET: api/order
         [HttpGet]
-        public async Task<IActionResult> GetOrders()
+        public async Task<ActionResult<List<OrderDto>>> GetUserOrders()
         {
-            var orders = await _orderService.GetUserOrdersAsync(UserId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var orders = await _orderService.GetOrdersForUserAsync(userId);
             return Ok(orders);
         }
-    }
 
+        // GET: api/order/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<OrderDto>> GetOrderById(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var order = await _orderService.GetOrderByIdAsync(id, userId);
+            if (order == null) return NotFound();
+
+            return Ok(order);
+        }
+    }
 }

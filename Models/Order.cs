@@ -31,7 +31,7 @@ namespace CardShop.Models
         [ValidateNever]
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
-        [ValidateNever]
-        public decimal? TotalAmout => OrderItems?.Sum(i => i.Quantity * i.UnitPrice);
+        [Required]
+        public decimal TotalAmount { get; set; }
     }
 }

@@ -4,7 +4,8 @@ namespace api.Interfaces
 {
     public interface IOrderService
     {
-        Task<OrderDto> CreateOrderAsync(string userId);
-        Task<List<OrderDto>> GetUserOrdersAsync(string userId);
+        Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string userId, string? transactionId = null);
+        Task<List<OrderDto>> GetOrdersForUserAsync(string userId);
+        Task<OrderDto?> GetOrderByIdAsync(int orderId, string userId);
     }
 }
