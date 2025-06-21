@@ -106,6 +106,20 @@ builder.Services.AddAuthentication(options =>
             System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:SigningKey"])
         )
     };
+
+    // Read token from HTTP-only cookie named "access_token"
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["access_token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // configuration for stripe
@@ -121,6 +135,17 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000") // update if using another port
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Required for cookies
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -132,6 +157,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 

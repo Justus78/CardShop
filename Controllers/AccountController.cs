@@ -26,6 +26,31 @@ namespace CardShop.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
+            //if (!ModelState.IsValid) { return BadRequest(ModelState); }
+
+            //var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == loginDto.Username);
+
+            //if (user == null)
+            //{
+            //    return Unauthorized("Invalid username!");
+            //}
+
+            //var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+
+            //if (!result.Succeeded) 
+            //{
+            //    return Unauthorized("Username not found and/or password incorrect");
+            //}
+
+            //return Ok(
+            //        new NewUserDto
+            //        {
+            //            UserName = user.UserName,
+            //            Email = user.Email,
+            //            Token = _tokenService.CreateToken(user)
+            //        }
+            //    );
+
             if (!ModelState.IsValid) { return BadRequest(ModelState); }
 
             var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == loginDto.Username);
@@ -37,25 +62,80 @@ namespace CardShop.Controllers
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
-            if (!result.Succeeded) 
+            if (!result.Succeeded)
             {
                 return Unauthorized("Username not found and/or password incorrect");
             }
 
-            return Ok(
-                    new NewUserDto
-                    {
-                        UserName = user.UserName,
-                        Email = user.Email,
-                        Token = _tokenService.CreateToken(user)
-                    }
-                );
+            var token = _tokenService.CreateToken(user);
+
+            // 👇 Set token as secure HTTP-only cookie
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false, // change to false only in development
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            Response.Cookies.Append("access_token", token, cookieOptions);
+
+            return Ok(new
+            {
+                token = token,
+                UserName = user.UserName,
+                Email = user.Email
+                // Optionally remove Token from response
+            });
         } // end login 
 
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
+            //try
+            //{
+            //    if (!ModelState.IsValid)
+            //    {
+            //        return BadRequest(ModelState);
+            //    }
+
+            //    var appUser = new ApplicationUser
+            //    {
+            //        UserName = registerDto.Username,
+            //        Email = registerDto.EmailAddress,
+            //    };
+
+            //    var createdUser = await _userManager.CreateAsync(appUser, registerDto.Password);
+
+            //    if (createdUser.Succeeded) 
+            //    {
+            //        var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
+            //        if (roleResult.Succeeded)
+            //        {
+            //            return Ok(
+            //                new NewUserDto
+            //                {
+            //                    UserName = appUser.UserName,
+            //                    Email = appUser.Email,
+            //                    Token = _tokenService.CreateToken(appUser)
+            //                }
+            //            );
+            //        } else
+            //        {
+            //            return StatusCode(500, roleResult.Errors);
+            //        } // end if else
+            //    } 
+            //    else
+            //    {
+            //        return StatusCode(500, createdUser.Errors);
+            //    } // end if else for created user
+            //}
+            //catch (Exception e) 
+            //{
+            //    return StatusCode(500, e);
+            //} // end try catch
+
             try
             {
                 if (!ModelState.IsValid)
@@ -71,33 +151,42 @@ namespace CardShop.Controllers
 
                 var createdUser = await _userManager.CreateAsync(appUser, registerDto.Password);
 
-                if (createdUser.Succeeded) 
-                {
-                    var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
-                    if (roleResult.Succeeded)
-                    {
-                        return Ok(
-                            new NewUserDto
-                            {
-                                UserName = appUser.UserName,
-                                Email = appUser.Email,
-                                Token = _tokenService.CreateToken(appUser)
-                            }
-                        );
-                    } else
-                    {
-                        return StatusCode(500, roleResult.Errors);
-                    } // end if else
-                } 
-                else
+                if (!createdUser.Succeeded)
                 {
                     return StatusCode(500, createdUser.Errors);
-                } // end if else for created user
+                }
+
+                var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
+                if (!roleResult.Succeeded)
+                {
+                    return StatusCode(500, roleResult.Errors);
+                }
+
+                var token = _tokenService.CreateToken(appUser);
+
+                // 👇 Set token as secure HTTP-only cookie
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // change to true when deployed
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(7)
+                };
+
+                Response.Cookies.Append("access_token", token, cookieOptions);
+
+                return Ok(new
+                {
+                    token = token,
+                    UserName = appUser.UserName,
+                    Email = appUser.Email
+                    // Optionally remove Token from response
+                });
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 return StatusCode(500, e);
-            } // end try catch
+            }
         } // end register
 
 
