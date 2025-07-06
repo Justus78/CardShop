@@ -4,6 +4,7 @@ using api.Interfaces;
 using api.Mappers;
 using api.Services;
 using CardShop.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -25,6 +26,7 @@ namespace api.Controllers
         }
 
         // GET: api/Product
+        
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] ProductQueryObject query)
         {
@@ -54,6 +56,7 @@ namespace api.Controllers
             return Ok(product);
         } // end get product by id
 
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromForm] CreateProductDto productDto)
         {
@@ -79,6 +82,7 @@ namespace api.Controllers
             return CreatedAtAction(nameof(GetProductById), new { id = productModel.Id }, productModel);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut]
         [Route("{id:int}")]
         public async Task<IActionResult> UpdateProduct([FromRoute] int id, [FromForm] UpdateProductDto updateDto)
@@ -98,6 +102,7 @@ namespace api.Controllers
             return Ok(productModel);
         } // end update product
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete]
         [Route("{id:int}")]
         public async Task<IActionResult> DeleteProduct([FromRoute] int id)

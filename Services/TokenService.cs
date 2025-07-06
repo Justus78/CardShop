@@ -1,5 +1,6 @@
 ﻿using api.Interfaces;
 using CardShop.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -11,12 +12,15 @@ namespace api.Services
     {
         private readonly IConfiguration _config;
         private readonly SymmetricSecurityKey _key;
-        public TokenService(IConfiguration config)
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public TokenService(IConfiguration config, UserManager<ApplicationUser> userManager)
         {
+            _userManager = userManager;
             _config = config;
             _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:SigningKey"]));
         }
-        public string CreateToken(ApplicationUser user)
+        public async Task<string> CreateToken(ApplicationUser user)
         {
             var claims = new List<Claim>
             {
@@ -24,6 +28,13 @@ namespace api.Services
                 new Claim(JwtRegisteredClaimNames.GivenName, user.UserName),
                 new Claim(ClaimTypes.NameIdentifier, user.Id)
             };
+
+            var roles = await _userManager.GetRolesAsync(user); // get the roles from the user
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role)); // add the roles as claims to the token
+            }
 
             var cred = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512Signature);
 
@@ -43,5 +54,5 @@ namespace api.Services
 
             return tokenHandler.WriteToken(token);
         } // end create token
-    }
-}
+    } // end class
+} // end namespace

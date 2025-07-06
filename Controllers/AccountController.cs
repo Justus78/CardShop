@@ -1,10 +1,12 @@
 ﻿using api.DTOs.Account;
 using api.Interfaces;
 using CardShop.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection.Metadata.Ecma335;
+using System.Security.Claims;
 
 namespace CardShop.Controllers
 {
@@ -188,6 +190,23 @@ namespace CardShop.Controllers
                 return StatusCode(500, e);
             }
         } // end register
+
+        [Authorize]
+        [HttpGet("status")]
+        public async Task<IActionResult> GetAuthStatus()
+        {
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            var user = await _userManager.FindByEmailAsync(userEmail);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new
+            {
+                user.Id,
+                user.UserName,
+                user.Email,
+                roles
+            });
+        }
 
 
     } // end controller
