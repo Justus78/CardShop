@@ -24,7 +24,7 @@ namespace CardShop.Controllers
 
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto loginDto)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             //if (!ModelState.IsValid) { return BadRequest(ModelState); }
 
@@ -69,12 +69,12 @@ namespace CardShop.Controllers
 
             var token = _tokenService.CreateToken(user);
 
-            // 👇 Set token as secure HTTP-only cookie
+            // Set token as secure HTTP-only cookie
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false, // change to false only in development
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(7)
             };
 
@@ -169,7 +169,7 @@ namespace CardShop.Controllers
                 {
                     HttpOnly = true,
                     Secure = false, // change to true when deployed
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.Lax,
                     Expires = DateTime.UtcNow.AddDays(7)
                 };
 

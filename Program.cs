@@ -139,7 +139,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000") // update if using another port
+        policy.WithOrigins("http://localhost:5173") // update if using another port
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Required for cookies
