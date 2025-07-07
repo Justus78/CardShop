@@ -69,7 +69,7 @@ namespace CardShop.Controllers
                 return Unauthorized("Username not found and/or password incorrect");
             }
 
-            var token = _tokenService.CreateToken(user);
+            var token = await _tokenService.CreateToken(user);
 
             // Set token as secure HTTP-only cookie
             var cookieOptions = new CookieOptions
@@ -80,7 +80,7 @@ namespace CardShop.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             };
 
-            Response.Cookies.Append("access_token", token, cookieOptions);
+            Response.Cookies.Append("access_token", token.ToString(), cookieOptions);
 
             return Ok(new
             {
@@ -164,7 +164,7 @@ namespace CardShop.Controllers
                     return StatusCode(500, roleResult.Errors);
                 }
 
-                var token = _tokenService.CreateToken(appUser);
+                var token = await _tokenService.CreateToken(appUser);
 
                 // 👇 Set token as secure HTTP-only cookie
                 var cookieOptions = new CookieOptions
@@ -175,7 +175,7 @@ namespace CardShop.Controllers
                     Expires = DateTime.UtcNow.AddDays(7)
                 };
 
-                Response.Cookies.Append("access_token", token, cookieOptions);
+                Response.Cookies.Append("access_token", token.ToString(), cookieOptions);
 
                 return Ok(new
                 {
