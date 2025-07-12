@@ -45,6 +45,10 @@ namespace CardShop.Data
                 .WithOne(o => o.User)
                 .HasForeignKey(o => o.UserId);
 
+            modelBuilder.Entity<ApplicationUser>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
             modelBuilder.Entity<Product>()
                 .HasMany(p => p.CartItems)
                 .WithOne(ci => ci.Product)
