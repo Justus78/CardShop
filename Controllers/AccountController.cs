@@ -159,6 +159,7 @@ namespace CardShop.Controllers
                 }
 
                 var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
+                Console.WriteLine(roleResult);
                 if (!roleResult.Succeeded)
                 {
                     return StatusCode(500, roleResult.Errors);

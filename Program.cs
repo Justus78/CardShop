@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Stripe;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -104,7 +105,9 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(
             System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:SigningKey"])
-        )
+        ),
+
+        RoleClaimType = ClaimTypes.Role
     };
 
     // Read token from HTTP-only cookie named "access_token"
