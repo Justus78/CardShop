@@ -145,18 +145,19 @@ namespace api.Repositories
             }
 
             // check for new photo
-            if (dto.ProductImage != null)
-            {
-                if (product.CloudinaryId != null)
-                { // if there is already a pic
-                    await _photoService.DeletePhotoAsync(product.CloudinaryId); // delete current photo
-                }
-                // send new photo to cloudinary
-                var result = await _photoService.AddPhotoAsync(dto.ProductImage);
-                product.ImageUrl = result.Url.ToString(); // add new url to players
-                product.CloudinaryId = result.PublicId.ToString();
-            }
+            //if (dto.ProductImage != null)
+            //{
+            //    if (product.CloudinaryId != null)
+            //    { // if there is already a pic
+            //        await _photoService.DeletePhotoAsync(product.CloudinaryId); // delete current photo
+            //    }
+            //    // send new photo to cloudinary
+            //    var result = await _photoService.AddPhotoAsync(dto.ProductImage);
+            //    product.ImageUrl = result.Url.ToString(); // add new url to players
+            //    product.CloudinaryId = result.PublicId.ToString();
+            //}
 
+            product.ImageUrl = dto.ProductImage;
             product.Name = dto.Name;
             product.Description = dto.Description;
             product.Price = dto.Price;

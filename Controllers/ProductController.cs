@@ -68,14 +68,16 @@ namespace api.Controllers
 
             var productModel = productDto.ToProduct();
 
-            if (productDto.ProductImage != null) // if profilePic isnt null
-            {
-                var result = await _photoService.AddPhotoAsync(productDto.ProductImage); // add the photo to cloudinary
-                productModel.ImageUrl = result.Url.ToString(); // add the url from cloudinary to the product model
-                productModel.CloudinaryId = result.PublicId.ToString();
-            }
+            productModel.ImageUrl = productDto.ProductImage;
 
-            // add logic for cloudingary later
+
+            // cloudinary service here but not being used //
+            //if (productDto.ProductImage != null) // if profilePic isnt null
+            //{
+            //    var result = await _photoService.AddPhotoAsync(productDto.ProductImage); // add the photo to cloudinary
+            //    productModel.ImageUrl = result.Url.ToString(); // add the url from cloudinary to the product model
+            //    productModel.CloudinaryId = result.PublicId.ToString();
+            //}            
 
             await _productService.CreateAsync(productModel);
 

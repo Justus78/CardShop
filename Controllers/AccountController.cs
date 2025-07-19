@@ -75,8 +75,8 @@ namespace CardShop.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // change to false only in development
-                SameSite = SameSiteMode.Lax,
+                Secure = true, // change to false only in development
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7)
             };
 
@@ -171,8 +171,8 @@ namespace CardShop.Controllers
                 var cookieOptions = new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false, // change to true when deployed
-                    SameSite = SameSiteMode.Lax,
+                    Secure = true, // change to true when deployed
+                    SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddDays(7)
                 };
 
@@ -191,6 +191,20 @@ namespace CardShop.Controllers
                 return StatusCode(500, e);
             }
         } // end register
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("access_token", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+            });
+
+            return Ok(new { message = "Logged out" });
+        }
+
 
         [Authorize]
         [HttpGet("status")]
