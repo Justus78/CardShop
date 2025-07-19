@@ -155,20 +155,9 @@ namespace api.Repositories
             //    var result = await _photoService.AddPhotoAsync(dto.ProductImage);
             //    product.ImageUrl = result.Url.ToString(); // add new url to players
             //    product.CloudinaryId = result.PublicId.ToString();
-            //}
-
-            product.ImageUrl = dto.ProductImage;
-            product.Name = dto.Name;
-            product.Description = dto.Description;
+            //}            
             product.Price = dto.Price;
-            product.StockQuantity = dto.StockQuantity;
-            product.ProductCategory = dto.ProductCategory;
-            product.IsFoil = dto.IsFoil;
-            product.CardCondition = dto.CardCondition;
-            product.CardRarity = dto.CardRarity;
-            product.CardType = dto.CardType;
-            product.CollectionNumber = dto.CollectionNumber;
-            product.SetName = dto.SetName;
+            product.StockQuantity = dto.StockQuantity;           
 
             await _context.SaveChangesAsync();
 
