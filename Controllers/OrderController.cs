@@ -19,6 +19,7 @@ namespace CardShop.Controllers
         }
 
         // POST: api/order
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] CreateOrderDto dto)
         {
@@ -30,6 +31,7 @@ namespace CardShop.Controllers
         }
 
         // GET: api/order
+        [Authorize]
         [HttpGet]
         public async Task<ActionResult<List<OrderDto>>> GetUserOrders()
         {
@@ -41,6 +43,7 @@ namespace CardShop.Controllers
         }
 
         // GET: api/order/{id}
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<OrderDto>> GetOrderById(int id)
         {
@@ -52,5 +55,8 @@ namespace CardShop.Controllers
 
             return Ok(order);
         }
-    }
-}
+
+        
+
+    } // end controller
+} // end namespace

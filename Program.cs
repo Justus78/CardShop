@@ -136,6 +136,7 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
+builder.Services.AddScoped<IAdminService, AdminRepository>();
 
 
 builder.Services.AddCors(options =>
