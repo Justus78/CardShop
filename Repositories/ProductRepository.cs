@@ -72,61 +72,62 @@ namespace api.Repositories
             return productModel;
         } // end delete
 
-        public async Task<IEnumerable<Product>> GetAllAsync(ProductQueryObject queryObject)
+        public async Task<IEnumerable<Product>> GetAllAsync()
         {
-            IQueryable<Product> query = _context.Products;
+            return await _context.Products.ToListAsync();
+            //IQueryable<Product> query = _context.Products;
 
-            /* ---------- Filtering ---------- */
+            ///* ---------- Filtering ---------- */
 
-            // ProductCategory (enum)
-            if (!string.IsNullOrEmpty(queryObject.Category))
-            {
-                if (Enum.TryParse<ProductCategory>(queryObject.Category, true, out var categoryEnum))
-                {
-                    query = query.Where(p => p.ProductCategory == categoryEnum);
-                }
-            }
+            //// ProductCategory (enum)
+            //if (!string.IsNullOrEmpty(queryObject.Category))
+            //{
+            //    if (Enum.TryParse<ProductCategory>(queryObject.Category, true, out var categoryEnum))
+            //    {
+            //        query = query.Where(p => p.ProductCategory == categoryEnum);
+            //    }
+            //}
 
-            // CardRarity (nullable enum)
-            if (!string.IsNullOrEmpty(queryObject.Rarity))
-            {
-                if (Enum.TryParse<CardRarity>(queryObject.Rarity, true, out var rarityEnum))
-                {
-                    query = query.Where(p => p.CardRarity == rarityEnum);
-                }
-            }
+            //// CardRarity (nullable enum)
+            //if (!string.IsNullOrEmpty(queryObject.Rarity))
+            //{
+            //    if (Enum.TryParse<CardRarity>(queryObject.Rarity, true, out var rarityEnum))
+            //    {
+            //        query = query.Where(p => p.CardRarity == rarityEnum);
+            //    }
+            //}
 
-            // IsFoil (bool)
-            if (queryObject.IsFoil.HasValue)
-            {
-                query = query.Where(p => p.IsFoil == queryObject.IsFoil.Value);
-            }
+            //// IsFoil (bool)
+            //if (queryObject.IsFoil.HasValue)
+            //{
+            //    query = query.Where(p => p.IsFoil == queryObject.IsFoil.Value);
+            //}
 
-            /* ---------- Sorting ---------- */
-            query = queryObject.SortBy?.ToLower() switch
-            {
-                "name" => queryObject.Ascending ? query.OrderBy(p => p.Name)
-                                                    : query.OrderByDescending(p => p.Name),
+            ///* ---------- Sorting ---------- */
+            //query = queryObject.SortBy?.ToLower() switch
+            //{
+            //    "name" => queryObject.Ascending ? query.OrderBy(p => p.Name)
+            //                                        : query.OrderByDescending(p => p.Name),
 
-                "price" => queryObject.Ascending ? query.OrderBy(p => p.Price)
-                                                    : query.OrderByDescending(p => p.Price),
+            //    "price" => queryObject.Ascending ? query.OrderBy(p => p.Price)
+            //                                        : query.OrderByDescending(p => p.Price),
 
-                "category" => queryObject.Ascending ? query.OrderBy(p => p.ProductCategory)
-                                                    : query.OrderByDescending(p => p.ProductCategory),
+            //    "category" => queryObject.Ascending ? query.OrderBy(p => p.ProductCategory)
+            //                                        : query.OrderByDescending(p => p.ProductCategory),
 
-                "rarity" => queryObject.Ascending ? query.OrderBy(p => p.CardRarity)
-                                                    : query.OrderByDescending(p => p.CardRarity),
+            //    "rarity" => queryObject.Ascending ? query.OrderBy(p => p.CardRarity)
+            //                                        : query.OrderByDescending(p => p.CardRarity),
 
-                _ => queryObject.Ascending ? query.OrderBy(p => p.Id)
-                                                    : query.OrderByDescending(p => p.Id)
-            };
+            //    _ => queryObject.Ascending ? query.OrderBy(p => p.Id)
+            //                                        : query.OrderByDescending(p => p.Id)
+            //};
 
-            /* ---------- Pagination ---------- */
-            query = query
-                .Skip((queryObject.Page - 1) * queryObject.PageSize)
-                .Take(queryObject.PageSize);
+            ///* ---------- Pagination ---------- */
+            //query = query
+            //    .Skip((queryObject.Page - 1) * queryObject.PageSize)
+            //    .Take(queryObject.PageSize);
 
-            return await query.ToListAsync();  
+            //return await query.ToListAsync();  
 
         }// end get all products
 
