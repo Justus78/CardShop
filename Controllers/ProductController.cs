@@ -28,14 +28,14 @@ namespace api.Controllers
         // GET: api/Product
         
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] ProductQueryObject query)
+        public async Task<IActionResult> GetAll() // removed product query
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             } // validate model state
 
-            var products = await _productService.GetAllAsync(query);
+            var products = await _productService.GetAllAsync();
             return Ok(products);
         }
 

@@ -7,7 +7,7 @@ namespace api.Interfaces
 {
     public interface IProductService
     {
-        Task<IEnumerable<Product>> GetAllAsync(ProductQueryObject query);
+        Task<IEnumerable<Product>> GetAllAsync();
         Task<Product?> GetByIdAsync(int id);
         Task<Product> CreateAsync(Product product);
         Task<Product?> UpdateAsync(int id, UpdateProductDto dto);

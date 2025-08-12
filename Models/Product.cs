@@ -23,13 +23,15 @@ namespace CardShop.Models
         public string? CloudinaryId { get; set; } // for the cloudinary result public Id to located photos to delete
 
         // properites for singles cards
-        public bool IsFoil { get; set; } = false;        
+        public bool IsFoil { get; set; } = false;  
+        
         [Required]
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }
         public string? CollectionNumber { get; set; }
         public string? SetName { get; set; }
+        public bool? BestSeller { get; set; } = false;
 
 
         // navigation properties for many to many relationships
