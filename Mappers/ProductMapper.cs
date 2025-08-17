@@ -20,7 +20,8 @@ namespace api.Mappers
                 CardRarity = dto.CardRarity,
                 CardType = dto.CardType,
                 CollectionNumber = dto.CollectionNumber,
-                SetName = dto.SetName
+                SetName = dto.SetName,
+                BestSeller = dto.BestSeller,
             };
         }
     }

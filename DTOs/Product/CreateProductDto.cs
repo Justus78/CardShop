@@ -26,5 +26,6 @@ namespace api.DTOs.Product
         public CardType? CardType { get; set; }
         public string? CollectionNumber { get; set; }
         public string? SetName { get; set; }
+        public bool? BestSeller { get; set; } = false;
     }
 }
