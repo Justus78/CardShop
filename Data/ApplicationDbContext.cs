@@ -9,7 +9,12 @@ namespace CardShop.Data
 
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+
+        private readonly IConfiguration _config;
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration config) : base(options) 
+        { 
+            _config = config;
+        }
         public DbSet<Product> Products { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Order> Orders { get; set; }
@@ -32,6 +37,25 @@ namespace CardShop.Data
                     NormalizedName = "USER"
                 }
             };
+
+            // Create Admin User
+            var hasher = new PasswordHasher<ApplicationUser>();
+
+            var adminUser = new ApplicationUser
+            {
+                Id = "admin-user-110022554411", // must be a constant string for seeding
+                UserName = _config["AdminUser:Username"],
+                NormalizedUserName = _config["AdminUser:Username"].ToUpper(),
+                Email = "Stars787878@aol.com",
+                NormalizedEmail = "STARS787878@AOL.COM",
+                EmailConfirmed = true,
+            };
+
+            // Hash the password "Admin123!" right here
+            adminUser.PasswordHash = hasher.HashPassword(adminUser, _config["AdminUser:Password"]);
+
+            // Seed Admin user
+            modelBuilder.Entity<ApplicationUser>().HasData(adminUser);
 
             modelBuilder.Entity<IdentityRole>().HasData(roles);
 
