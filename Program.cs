@@ -138,6 +138,13 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
 
+builder.Services.AddHttpClient<ISetService, SetService>(client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "CardShopApp/1.0 (https://yourdomain.com)");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
+
 
 builder.Services.AddCors(options =>
 {

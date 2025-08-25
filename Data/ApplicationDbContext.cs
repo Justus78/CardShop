@@ -1,4 +1,5 @@
-﻿using CardShop.Models;
+﻿using api.Models;
+using CardShop.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ namespace CardShop.Data
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Set> Sets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
