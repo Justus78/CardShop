@@ -17,6 +17,7 @@ namespace api.Mappers
                 ImageUrl = item.Product?.ImageUrl ?? string.Empty,
                 Price = item.Product?.Price ?? 0m,
                 Quantity = item.Quantity,
+                Set = item.Product?.SetName ?? string.Empty,
             };
         }
 
