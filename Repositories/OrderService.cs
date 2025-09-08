@@ -15,68 +15,76 @@ namespace CardShop.Services
             _context = context;
         }
 
-        
+
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string userId, string? transactionId = null)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            try
+            return await strategy.ExecuteAsync(async () =>
             {
-                // 1. Validate stock
-                foreach (var item in dto.Items)
+                // This ensures the entire block is retryable as a single unit
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
                 {
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product == null)
-                        throw new Exception($"Product not found: ID {item.ProductId}");
-
-                    if (product.StockQuantity < item.Quantity)
-                        throw new Exception($"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {item.Quantity}");
-                }
-
-                // 2. Create order
-                var order = OrderMapper.ToOrder(dto, userId);
-                if (!string.IsNullOrEmpty(transactionId))
-                    order.TransactionId = transactionId;
-
-                order.TotalAmount = order.OrderItems.Sum(i => i.Quantity * i.UnitPrice);
-                _context.Orders.Add(order);
-
-                // 3. Adjust stock and clean up CartItems
-                foreach (var item in order.OrderItems)
-                {
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product == null) continue;
-
-                    product.StockQuantity -= item.Quantity;
-
-                    if (product.StockQuantity == 0)
+                    // 1. Validate stock
+                    foreach (var item in dto.Items)
                     {
-                        // Remove from all other users' cart items
-                        var cartItems = await _context.CartItems
-                            .Where(ci => ci.ProductId == product.Id && ci.UserId != userId)
-                            .ToListAsync();
+                        var product = await _context.Products.FindAsync(item.ProductId);
+                        if (product == null)
+                            throw new Exception($"Product not found: ID {item.ProductId}");
 
-                        _context.CartItems.RemoveRange(cartItems);
+                        if (product.StockQuantity < item.Quantity)
+                            throw new Exception($"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {item.Quantity}");
                     }
+
+                    // 2. Create order
+                    var order = OrderMapper.ToOrder(dto, userId);
+                    if (!string.IsNullOrEmpty(transactionId))
+                        order.TransactionId = transactionId;
+
+                    order.TotalAmount = order.OrderItems.Sum(i => i.Quantity * i.UnitPrice);
+                    _context.Orders.Add(order);
+
+                    // 3. Adjust stock and clean up CartItems
+                    foreach (var item in order.OrderItems)
+                    {
+                        var product = await _context.Products.FindAsync(item.ProductId);
+                        if (product == null) continue;
+
+                        product.StockQuantity -= item.Quantity;
+
+                        if (product.StockQuantity == 0)
+                        {
+                            // Remove from all other users' cart items
+                            var cartItems = await _context.CartItems
+                                .Where(ci => ci.ProductId == product.Id && ci.UserId != userId)
+                                .ToListAsync();
+
+                            _context.CartItems.RemoveRange(cartItems);
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // 4. Fetch created order including items
+                    var createdOrder = await _context.Orders
+                        .Include(o => o.OrderItems)
+                            .ThenInclude(oi => oi.Product)
+                        .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+                    return OrderMapper.ToOrderDto(createdOrder!);
                 }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                var createdOrder = await _context.Orders
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Product)
-                    .FirstOrDefaultAsync(o => o.Id == order.Id);
-
-                return OrderMapper.ToOrderDto(createdOrder!);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
+
 
 
         public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)

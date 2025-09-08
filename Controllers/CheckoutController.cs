@@ -1,34 +1,45 @@
 ﻿using api.DTOs.Order;
-using api.DTOs.Stripe;
 using api.Interfaces;
 using CardShop.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
-namespace api.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class CheckoutController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class CheckoutController : ControllerBase
+    private readonly ICheckoutService _checkoutService;
+    private readonly IOrderService _orderService;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public CheckoutController(ICheckoutService checkoutService,
+        IOrderService orderService, UserManager<ApplicationUser> userManager)
     {
-        private readonly ICheckoutService _checkoutService;
-        private readonly UserManager<ApplicationUser> _userManager;
+        _checkoutService = checkoutService;
+        _orderService = orderService;
+        _userManager = userManager;
+    }
 
-        public CheckoutController(ICheckoutService checkoutService, UserManager<ApplicationUser> userManager)
-        {
-            _checkoutService = checkoutService;
-            _userManager = userManager;
-        }
+    [HttpPost("create-payment-intent")]
+    public async Task<ActionResult> CreatePaymentIntent(CreateOrderDto orderDto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null) return Unauthorized();
 
-        [HttpPost("checkout")]
-        public async Task<ActionResult<StripePaymentResultDto>> Checkout([FromBody] CreateOrderDto orderDto)
-        {
-            var userId = _userManager.GetUserId(User);
-            if (userId == null) return Unauthorized();
+        var result = await _checkoutService.CreatePaymentIntentAsync(orderDto, userId);
 
-            var result = await _checkoutService.CreatePaymentAndOrderAsync(orderDto, userId);
-            return Ok(result);
-        }
+        return Ok(result); // returns { clientSecret, paymentIntentId }
+    }
 
-    } // end controller
+    [HttpPost("confirm-order")]
+    public async Task<ActionResult> ConfirmOrder(CreateOrderDto orderDto) // removed param for paymentIntendId, moved to DTO
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null) return Unauthorized();
+
+        var order = await _orderService.CreateOrderAsync(orderDto, userId);
+
+        return Ok(order);
+    }
 }

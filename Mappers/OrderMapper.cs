@@ -34,7 +34,7 @@ namespace CardShop.Mappers
             {
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
-                PaymentStatus = "Pending", // default, can be updated later
+                PaymentStatus = "Paid", // default, can be updated later
                 PaymentProvider = dto.PaymentProvider,
                 TransactionId = dto.TransactionId,
                 OrderItems = dto.Items.Select(i => new OrderItem

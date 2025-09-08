@@ -6,7 +6,7 @@ namespace api.Interfaces
 {
     public interface ICheckoutService
     {
-        Task<StripePaymentResultDto> CreatePaymentAndOrderAsync(CreateOrderDto createOrderDto, string userId);
+        Task<StripePaymentResultDto> CreatePaymentIntentAsync(CreateOrderDto createOrderDto, string userId);
 
     }
 }
