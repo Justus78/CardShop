@@ -1,62 +1,89 @@
 ﻿using api.DTOs.Order;
 using api.Interfaces;
+using CardShop.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Stripe;
 
-namespace CardShop.Controllers
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class OrdersController : ControllerBase
 {
-    [ApiController]
-    [Route("api/order")]
-    [Authorize]
-    public class OrderController : ControllerBase
+    private readonly IOrderService _orderService;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IConfiguration _config;
+
+    public OrdersController(IOrderService orderService, UserManager<ApplicationUser> userManager, IConfiguration config)
     {
-        private readonly IOrderService _orderService;
+        _orderService = orderService;
+        _userManager = userManager;
+        _config = config;
+    }
 
-        public OrderController(IOrderService orderService)
+    [HttpPost("create-intent")]
+    public async Task<IActionResult> CreatePaymentIntent([FromBody] CreateOrderDto dto)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+
+        StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
+
+        var options = new PaymentIntentCreateOptions
         {
-            _orderService = orderService;
-        }
+            Amount = (long)(dto.Items.Sum(i => i.Quantity * i.UnitPrice) * 100),
+            Currency = "usd",
+            AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+            {
+                Enabled = true
+            },
+            Shipping = new ChargeShippingOptions
+            {
+                Name = dto.RecipientName,
+                Address = new AddressOptions
+                {
+                    Line1 = dto.Street,
+                    City = dto.City,
+                    State = dto.State,
+                    PostalCode = dto.PostalCode,
+                    Country = dto.Country
+                }
+            }
+        };
 
-        // POST: api/order
-        [Authorize]
-        [HttpPost]
-        public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] CreateOrderDto dto)
+        var service = new PaymentIntentService();
+        var paymentIntent = await service.CreateAsync(options);
+
+        // Create pending order
+        dto.PaymentIntentId = paymentIntent.Id;
+        var order = await _orderService.CreateOrderAsync(dto, user.Id);
+
+        return Ok(new
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            clientSecret = paymentIntent.ClientSecret,
+            order
+        });
+    }
 
-            var order = await _orderService.CreateOrderAsync(dto, userId);
-            return Ok(order);
-        }
+    [HttpGet]
+    public async Task<IActionResult> GetOrders()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
 
-        // GET: api/order
-        [Authorize]
-        [HttpGet]
-        public async Task<ActionResult<List<OrderDto>>> GetUserOrders()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+        var orders = await _orderService.GetOrdersForUserAsync(user.Id);
+        return Ok(orders);
+    }
 
-            var orders = await _orderService.GetOrdersForUserAsync(userId);
-            return Ok(orders);
-        }
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetOrderById(int id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
 
-        // GET: api/order/{id}
-        [Authorize]
-        [HttpGet("{id}")]
-        public async Task<ActionResult<OrderDto>> GetOrderById(int id)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
-
-            var order = await _orderService.GetOrderByIdAsync(id, userId);
-            if (order == null) return NotFound();
-
-            return Ok(order);
-        }
-
-        
-
-    } // end controller
-} // end namespace
+        var order = await _orderService.GetOrderByIdAsync(id, user.Id);
+        if (order == null) return NotFound();
+        return Ok(order);
+    }
+}

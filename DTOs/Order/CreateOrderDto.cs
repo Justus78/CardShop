@@ -2,8 +2,14 @@
 {
     public class CreateOrderDto
     {
-        public List<OrderItemDto> Items { get; set; }
-        public string PaymentProvider { get; set; } = "Stripe"; // "Stripe", "PayPal", etc.
-        public string? TransactionId { get; set; } // populated after payment
+        public List<CreateOrderItemDto> Items { get; set; }
+        public string RecipientName { get; set; }
+        public string Street { get; set; }
+        public string City { get; set; }
+        public string State { get; set; }
+        public string PostalCode { get; set; }
+        public string Country { get; set; }
+
+        public string? PaymentIntentId { get; set; }
     }
 }

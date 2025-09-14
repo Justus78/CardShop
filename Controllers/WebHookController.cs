@@ -1,72 +1,48 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using api.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using Stripe;
-using CardShop.Data;
 
-
-public class WebHookController
+[ApiController]
+[Route("api/[controller]")]
+public class StripeWebhookController : ControllerBase
 {
-    [ApiController]
-    [Route("api/webhook/stripe")]
-    public class WebhookController : ControllerBase
+    private readonly IOrderService _orderService;
+    private readonly IConfiguration _config;
+
+    public StripeWebhookController(IOrderService orderService, IConfiguration config)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly ILogger<WebhookController> _logger;
-        private readonly string _webhookSecret;
+        _orderService = orderService;
+        _config = config;
+    }
 
-        public WebhookController(ApplicationDbContext context, ILogger<WebhookController> logger, IConfiguration config)
+    [HttpPost]
+    public async Task<IActionResult> Index()
+    {
+        var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+
+        try
         {
-            _context = context;
-            _logger = logger;
-            _webhookSecret = config["Stripe:WebhookSecret"];
-        }
+            var stripeEvent = EventUtility.ConstructEvent(
+                json,
+                Request.Headers["Stripe-Signature"],
+                _config["Stripe:WebhookSecret"]
+            );
 
-        [HttpPost]
-        public async Task<IActionResult> StripeWebhook()
-        {
-            var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-
-            Event stripeEvent;
-
-            try
-            {
-                var signatureHeader = Request.Headers["Stripe-Signature"];
-                stripeEvent = EventUtility.ConstructEvent(json, signatureHeader, _webhookSecret);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"⚠️ Webhook signature verification failed: {ex.Message}");
-                return BadRequest();
-            }
-
-            // Log or handle specific event types
+            // Use string literal instead of Events.PaymentIntentSucceeded
             if (stripeEvent.Type == "payment_intent.succeeded")
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                var paymentIntentId = paymentIntent.Id;
-
-                var order = _context.Orders.FirstOrDefault(o => o.TransactionId == paymentIntentId);
-                if (order != null)
+                if (paymentIntent != null)
                 {
-                    order.PaymentStatus = "Paid";
-                    await _context.SaveChangesAsync();
+                    await _orderService.MarkOrderPaidAsync(paymentIntent.Id);
                 }
             }
-            else if (stripeEvent.Type == "payment_intent.payment_failed")
-            {
-                var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                var paymentIntentId = paymentIntent.Id;
-
-                var order = _context.Orders.FirstOrDefault(o => o.TransactionId == paymentIntentId);
-                if (order != null)
-                {
-                    order.PaymentStatus = "Failed";
-                    await _context.SaveChangesAsync();
-                }
-            }
-
 
             return Ok();
         }
+        catch (StripeException e)
+        {
+            return BadRequest(new { error = e.Message });
+        }
     }
 }
-

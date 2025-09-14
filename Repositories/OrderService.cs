@@ -2,7 +2,6 @@
 using api.Interfaces;
 using api.Models;
 using CardShop.Data;
-using CardShop.Mappers;
 using CardShop.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,32 +16,55 @@ namespace CardShop.Services
             _context = context;
         }
 
-        // Create pending order linked to PaymentIntent
+        // Create a pending order (called before Stripe payment)
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string userId)
         {
-            // Validate stock but don’t deduct yet
-            foreach (var item in dto.Items)
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
             {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                if (product == null)
-                    throw new Exception($"Product not found: ID {item.ProductId}");
+                using var transaction = await _context.Database.BeginTransactionAsync();
 
-                if (product.StockQuantity < item.Quantity)
-                    throw new Exception($"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {item.Quantity}");
-            }
+                // Validate stock
+                foreach (var item in dto.Items)
+                {
+                    var product = await _context.Products.FindAsync(item.ProductId);
+                    if (product == null)
+                        throw new Exception($"Product not found: {item.ProductId}");
 
-            // Map to order
-            var order = OrderMapper.ToOrder(dto, userId);
-            order.Status = OrderStatus.Pending;
-            order.TotalAmount = order.OrderItems.Sum(i => i.Quantity * i.UnitPrice);
+                    if (product.StockQuantity < item.Quantity)
+                        throw new Exception($"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {item.Quantity}");
+                }
 
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
+                // Map to order
+                var order = new Order
+                {
+                    UserId = userId,
+                    Status = OrderStatus.Pending,
+                    RecipientName = dto.RecipientName,
+                    Street = dto.Street,
+                    City = dto.City,
+                    State = dto.State,
+                    PostalCode = dto.PostalCode,
+                    Country = dto.Country,
+                    OrderItems = dto.Items.Select(i => new OrderItem
+                    {
+                        ProductId = i.ProductId,
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice
+                    }).ToList(),
+                    TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice)
+                };
 
-            return OrderMapper.ToOrderDto(order);
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return MapToDto(order);
+            });
         }
 
-        // Finalize order after Stripe confirms payment
+        // Called by Stripe webhook when payment succeeds
         public async Task MarkOrderPaidAsync(string paymentIntentId)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -51,62 +73,52 @@ namespace CardShop.Services
             {
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
-                try
+                var order = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .FirstOrDefaultAsync(o => o.PaymentIntentId == paymentIntentId);
+
+                if (order == null) return;
+
+                if (order.Status == OrderStatus.Paid) return;
+
+                foreach (var item in order.OrderItems)
                 {
-                    var order = await _context.Orders
-                        .Include(o => o.OrderItems)
-                        .FirstOrDefaultAsync(o => o.PaymentIntentId == paymentIntentId);
+                    var product = await _context.Products.FindAsync(item.ProductId);
+                    if (product == null) continue;
 
-                    if (order == null)
-                        throw new Exception($"Order not found for PaymentIntentId {paymentIntentId}");
+                    if (product.StockQuantity < item.Quantity)
+                        throw new Exception($"Not enough stock for '{product.Name}' at payment time.");
 
-                    if (order.Status == OrderStatus.Paid)
-                        return; // already processed
+                    product.StockQuantity -= item.Quantity;
 
-                    // Deduct stock + clean up carts
-                    foreach (var item in order.OrderItems)
+                    if (product.StockQuantity == 0)
                     {
-                        var product = await _context.Products.FindAsync(item.ProductId);
-                        if (product == null) continue;
+                        var cartItems = await _context.CartItems
+                            .Where(ci => ci.ProductId == product.Id && ci.UserId != order.UserId)
+                            .ToListAsync();
 
-                        if (product.StockQuantity < item.Quantity)
-                            throw new Exception($"Not enough stock for '{product.Name}' at payment time.");
-
-                        product.StockQuantity -= item.Quantity;
-
-                        if (product.StockQuantity == 0)
-                        {
-                            var cartItems = await _context.CartItems
-                                .Where(ci => ci.ProductId == product.Id && ci.UserId != order.UserId)
-                                .ToListAsync();
-
-                            _context.CartItems.RemoveRange(cartItems);
-                        }
+                        _context.CartItems.RemoveRange(cartItems);
                     }
+                }
 
-                    order.Status = OrderStatus.Paid;
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                order.Status = OrderStatus.Paid;
+                order.PaidAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
             });
         }
 
         public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)
         {
             var orders = await _context.Orders
-                .Where(o => o.UserId == userId)
-                .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
 
-            return orders.Select(OrderMapper.ToOrderDto).ToList();
+            return orders.Select(MapToDto).ToList();
         }
 
         public async Task<OrderDto?> GetOrderByIdAsync(int orderId, string userId)
@@ -116,7 +128,7 @@ namespace CardShop.Services
                     .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
 
-            return order == null ? null : OrderMapper.ToOrderDto(order);
+            return order == null ? null : MapToDto(order);
         }
 
         public async Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
@@ -127,6 +139,33 @@ namespace CardShop.Services
             order.Status = newStatus;
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private OrderDto MapToDto(Order order)
+        {
+            return new OrderDto
+            {
+                Id = order.Id,
+                UserId = order.UserId,
+                PaymentIntentId = order.PaymentIntentId,
+                Status = order.Status,
+                CreatedAt = (DateTime)order.CreatedDate,
+                PaidAt = order.PaidAt,
+                RecipientName = order.RecipientName,
+                Street = order.Street,
+                City = order.City,
+                State = order.State,
+                PostalCode = order.PostalCode,
+                Country = order.Country,
+                TotalAmount = (decimal)order.TotalAmount,
+                Items = order.OrderItems.Select(oi => new OrderItemDto
+                {
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product.Name,
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice
+                }).ToList()
+            };
         }
     }
 }

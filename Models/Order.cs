@@ -11,12 +11,12 @@ namespace CardShop.Models
         // relationships
         [Required]
         public string? UserId { get; set; }
-
         [ValidateNever]
         public ApplicationUser User { get; set; }
 
-        [ValidateNever]
-        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+        // payment intent id for stripe
+        public string? PaymentIntentId { get; set; }        
 
 
         // shipping info
@@ -28,22 +28,19 @@ namespace CardShop.Models
         public string Country { get; set; }
 
 
-        // Payment / Metadata
-        public string PaymentIntentId { get; set; }
+        // Payment / Metadata       
         public DateTime? CreatedDate { get; set; }
-
-        // Status
-        [Required]
-        [StringLength(50)]
-        public OrderStatus Status { get; set; } = OrderStatus.Pending;
-
-        [Required]
-        [StringLength(50)]
+        public DateTime? PaidAt { get; set; }
+        // Status        
+        public OrderStatus Status { get; set; } = OrderStatus.Pending;        
         public string PaymentProvider { get; set; } = "Unspecified";
         
 
         // total amount of the order
         [Required]
         public decimal? TotalAmount { get; set; }
+        // list of order items
+        [ValidateNever]
+        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
 }
