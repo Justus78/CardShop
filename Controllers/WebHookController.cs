@@ -28,7 +28,6 @@ public class StripeWebhookController : ControllerBase
                 _config["Stripe:WebhookSecret"]
             );
 
-            // Use string literal instead of Events.PaymentIntentSucceeded
             if (stripeEvent.Type == "payment_intent.succeeded")
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;

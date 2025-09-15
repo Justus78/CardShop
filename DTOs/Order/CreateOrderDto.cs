@@ -9,6 +9,7 @@
         public string State { get; set; }
         public string PostalCode { get; set; }
         public string Country { get; set; }
+        public string PaymentProvider { get; set; }
 
         public string? PaymentIntentId { get; set; }
     }

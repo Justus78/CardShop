@@ -24,7 +24,7 @@ namespace api.Repositories
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                .OrderByDescending(o => o.OrderDate)
+                .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
 
             return orders.Select(OrderMapper.ToOrderDto).ToList();

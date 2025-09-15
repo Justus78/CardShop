@@ -29,7 +29,7 @@ namespace CardShop.Models
 
 
         // Payment / Metadata       
-        public DateTime? CreatedDate { get; set; }
+        public DateTime CreatedDate { get; set; }
         public DateTime? PaidAt { get; set; }
         // Status        
         public OrderStatus Status { get; set; } = OrderStatus.Pending;        
@@ -38,7 +38,7 @@ namespace CardShop.Models
 
         // total amount of the order
         [Required]
-        public decimal? TotalAmount { get; set; }
+        public decimal TotalAmount { get; set; }
         // list of order items
         [ValidateNever]
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

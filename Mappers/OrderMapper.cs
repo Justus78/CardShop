@@ -1,4 +1,5 @@
 ﻿using api.DTOs.Order;
+using api.Models;
 using CardShop.Models;
 
 namespace CardShop.Mappers
@@ -10,18 +11,16 @@ namespace CardShop.Mappers
             return new OrderDto
             {
                 Id = order.Id,
-                OrderDate = order.OrderDate,
-                PaymentStatus = order.PaymentStatus,
+                CreatedAt = order.CreatedDate,
+                Status = order.Status,
                 PaymentProvider = order.PaymentProvider,
-                TransactionId = order.TransactionId,
+                PaymentIntentId = order.PaymentIntentId,
                 TotalAmount = order.TotalAmount,
                 UserId = order.UserId,
-                User = order.User,
                 Items = order.OrderItems.Select(oi => new OrderItemDto
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product?.Name ?? string.Empty,
-                    ImageUrl = oi.Product?.ImageUrl ?? string.Empty,
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice
                 }).ToList()
@@ -33,10 +32,10 @@ namespace CardShop.Mappers
             return new Order
             {
                 UserId = userId,
-                OrderDate = DateTime.UtcNow,
-                PaymentStatus = "Paid", // default, can be updated later
+                CreatedDate = DateTime.UtcNow,
+                Status = OrderStatus.Paid, // default, can be updated later
                 PaymentProvider = dto.PaymentProvider,
-                TransactionId = dto.TransactionId,
+                PaymentIntentId = dto.PaymentIntentId,
                 OrderItems = dto.Items.Select(i => new OrderItem
                 {
                     ProductId = i.ProductId,
