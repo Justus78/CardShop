@@ -40,14 +40,14 @@ public class OrdersController : ControllerBase
             },
             Shipping = new ChargeShippingOptions
             {
-                Name = dto.RecipientName,
+                Name = dto.ShippingInfo.FullName,
                 Address = new AddressOptions
                 {
-                    Line1 = dto.Street,
-                    City = dto.City,
-                    State = dto.State,
-                    PostalCode = dto.PostalCode,
-                    Country = dto.Country
+                    Line1 = dto.ShippingInfo.Address,
+                    City = dto.ShippingInfo.City,
+                    State = dto.ShippingInfo.State,
+                    PostalCode = dto.ShippingInfo.PostalCode,
+                    Country = dto.ShippingInfo.Country
                 }
             }
         };
@@ -62,6 +62,7 @@ public class OrdersController : ControllerBase
         return Ok(new
         {
             clientSecret = paymentIntent.ClientSecret,
+            paymentIntentId = paymentIntent.Id,
             order
         });
     }

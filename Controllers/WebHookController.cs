@@ -28,6 +28,16 @@ public class StripeWebhookController : ControllerBase
                 _config["Stripe:WebhookSecret"]
             );
 
+            if (stripeEvent.Type == "payment_intent.failed") 
+            {
+                var failedIntent = stripeEvent.Data.Object as PaymentIntent;
+                if (failedIntent != null)
+                {
+                    await _orderService.MarkOrderFailedAsync(failedIntent.Id);
+                }
+            }
+
+
             if (stripeEvent.Type == "payment_intent.succeeded")
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;

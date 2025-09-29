@@ -41,12 +41,13 @@ namespace CardShop.Services
                 {
                     UserId = userId,
                     Status = OrderStatus.Pending,
-                    RecipientName = dto.RecipientName,
-                    Street = dto.Street,
-                    City = dto.City,
-                    State = dto.State,
-                    PostalCode = dto.PostalCode,
-                    Country = dto.Country,
+                    PaymentIntentId = dto.PaymentIntentId,
+                    RecipientName = dto.ShippingInfo.FullName,
+                    Street = dto.ShippingInfo.Address,
+                    City = dto.ShippingInfo.City,
+                    State = dto.ShippingInfo.State,
+                    PostalCode = dto.ShippingInfo.PostalCode,
+                    Country = dto.ShippingInfo.Country,
                     OrderItems = dto.Items.Select(i => new OrderItem
                     {
                         ProductId = i.ProductId,
@@ -108,6 +109,22 @@ namespace CardShop.Services
                 await transaction.CommitAsync();
             });
         }
+
+        // Called by stripe webhook when payment fails
+        public async Task MarkOrderFailedAsync(string paymentIntentId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .FirstOrDefaultAsync(o => o.PaymentIntentId == paymentIntentId);
+
+            if (order == null) return;
+
+            if (order.Status == OrderStatus.Failed || order.Status == OrderStatus.Paid) return;
+
+            order.Status = OrderStatus.Failed;
+            await _context.SaveChangesAsync();
+        }
+
 
         public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)
         {
