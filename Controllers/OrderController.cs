@@ -56,8 +56,8 @@ public class OrdersController : ControllerBase
         var paymentIntent = await service.CreateAsync(options);
 
         // Create pending order
-        dto.PaymentIntentId = paymentIntent.Id;
-        var order = await _orderService.CreateOrderAsync(dto, user.Id);
+        dto.PaymentIntentId = paymentIntent.Id;  // add payment intent to the dto
+        var order = await _orderService.CreateOrderAsync(dto, user.Id); // create the order
 
         return Ok(new
         {
