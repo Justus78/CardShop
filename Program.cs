@@ -129,7 +129,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
-
+// configuration for services
 builder.Services.AddScoped<ITokenService, api.Services.TokenService>();
 builder.Services.AddScoped<IProductService, ProductRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
@@ -137,6 +137,8 @@ builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 
 builder.Services.AddHttpClient<ISetService, SetService>(client =>
 {
