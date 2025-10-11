@@ -1,36 +1,35 @@
-﻿using api.Interfaces;
-using Microsoft.IdentityModel.Tokens;
-using PostmarkDotNet;
+﻿using System.Net;
+using System.Net.Mail;
+using api.Interfaces;
 
 namespace api.Services
 {
     public class EmailService : IEmailService
     {
-        // private variables
-        private readonly string _apiKey;
-        private readonly string _fromEmail;
+        private readonly IConfiguration _config;
 
-        private EmailService(IConfiguration _config)
+        public EmailService(IConfiguration config)
         {
-            _apiKey = _config["Postmark:ApiKey"];
-            _fromEmail = _config["Postmark:FromEmail"];
+            _config = config;
         }
+
         public async Task SendEmailAsync(string to, string subject, string htmlBody)
         {
-            var client = new PostmarkClient(_apiKey); // create the postmark client with api key
+            var fromEmail = _config["Zoho:FromEmail"];
+            var password = _config["Zoho:AppPassword"];
+            var host = "smtp.zoho.com";
+            var port = 587;
 
-
-            // create the message to send
-            var message = new PostmarkMessage
+            using (var smtpClient = new SmtpClient(host, port))
             {
-                From = _fromEmail,
-                To = to,
-                Subject = subject,
-                HtmlBody = htmlBody,
-                MessageStream = "outbound"
-            };
+                smtpClient.EnableSsl = true;
+                smtpClient.Credentials = new NetworkCredential(fromEmail, password);
 
-            await client.SendMessageAsync(message); // send the email
+                var mail = new MailMessage(fromEmail, to, subject, htmlBody);
+                mail.IsBodyHtml = true;
+
+                await smtpClient.SendMailAsync(mail);
+            }
         }
     }
 }

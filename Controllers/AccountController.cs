@@ -239,6 +239,19 @@ namespace CardShop.Controllers
             return Ok("If that email is registered, a reset link was sent.");
         } // end forgot password endpoint
 
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null) return BadRequest("Invalid user.");
+
+            var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+            if (!result.Succeeded) return BadRequest(result.Errors);
+
+            return Ok("Password has been reset successfully.");
+        } // end reset password endpoint
+
+
 
 
 
