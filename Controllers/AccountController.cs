@@ -1,11 +1,11 @@
 ﻿using api.DTOs.Account;
 using api.Interfaces;
+using api.Services;
 using CardShop.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Metadata.Ecma335;
 using System.Security.Claims;
 
 namespace CardShop.Controllers
@@ -16,12 +16,14 @@ namespace CardShop.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITokenService _tokenService;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly EmailService _emailService;
         public AccountController(UserManager<ApplicationUser> userManager, ITokenService tokenService,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager, EmailService emailService)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _signInManager = signInManager;
+            _emailService = emailService;
         }
 
 
@@ -62,6 +64,12 @@ namespace CardShop.Controllers
                 return Unauthorized("Invalid username!");
             }
 
+            // verify the user has confirmed their email
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                return Unauthorized("Please verify your email before logging in.");
+            }
+
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
             if (!result.Succeeded)
@@ -97,17 +105,20 @@ namespace CardShop.Controllers
         {         
             try
             {
+                // check model state
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
                 }
 
+                // create new appuser
                 var appUser = new ApplicationUser
                 {
                     UserName = registerDto.Username,
                     Email = registerDto.EmailAddress,
                 };
 
+                // create the appuser in the DB
                 var createdUser = await _userManager.CreateAsync(appUser, registerDto.Password);
 
                 if (!createdUser.Succeeded)
@@ -115,16 +126,31 @@ namespace CardShop.Controllers
                     return StatusCode(500, createdUser.Errors);
                 }
 
+                // add user role to the new user
                 var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
-                Console.WriteLine(roleResult);
+
                 if (!roleResult.Succeeded)
                 {
                     return StatusCode(500, roleResult.Errors);
                 }
 
+                // create the new token for the user
                 var token = await _tokenService.CreateToken(appUser);
 
-                // 👇 Set token as secure HTTP-only cookie
+                // create new email verification token
+                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
+
+                // create the confirmation link to send to the user
+                var confirmationLink = $"{Request.Scheme}://{Request.Host}/verify-email?userId={appUser.Id}&token={Uri.EscapeDataString(token)}";
+
+                // Send verification email via Postmark
+                await _emailService.SendEmailAsync(
+                    appUser.Email,
+                    "Verify your email - The Bearded Troll",
+                    $"<h2>Welcome to The Bearded Troll!</h2><p>Click below to verify your email:</p><a href='{confirmationLink}'>Verify Email</a>"
+                );
+
+                // Set token as secure HTTP-only cookie
                 var cookieOptions = new CookieOptions
                 {
                     HttpOnly = true,
@@ -179,6 +205,41 @@ namespace CardShop.Controllers
                 roles
             });
         }
+
+        [HttpGet("verify-email")]
+        public async Task<IActionResult> VerifyEmail(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null) return BadRequest("Invalid user.");
+
+            // verifies the user's email if given a valid token
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            if (!result.Succeeded) return BadRequest("Invalid or expired token.");
+
+            return Ok("Email verified successfully!");
+        } // end verify email method
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null) return Ok("If that email is registered, a reset link was sent.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetLink = $"{Request.Scheme}://{Request.Host}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
+
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Reset your password - The Bearded Troll",
+                $"<p>Click below to reset your password:</p><a href='{resetLink}'>Reset Password</a>"
+            );
+
+            return Ok("If that email is registered, a reset link was sent.");
+        } // end forgot password endpoint
+
+
 
 
     } // end controller
