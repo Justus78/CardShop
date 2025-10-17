@@ -82,8 +82,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequireUppercase = true;
     options.Password.RequiredLength = 10;
+    options.SignIn.RequireConfirmedEmail = true;
 })
-.AddEntityFrameworkStores<ApplicationDbContext>();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // add jwt scheme
 builder.Services.AddAuthentication(options =>
@@ -138,6 +140,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IUserAccountService, UserAccountService>();
 
 
 builder.Services.AddHttpClient<ISetService, SetService>(client =>
