@@ -6,7 +6,8 @@ namespace api.DTOs.Order
     public class OrderDto
     {
         public int Id { get; set; }
-        public ApplicationUser User { get; set; }
+        //public ApplicationUser User { get; set; }
+        public string? Username { get; set; }
         public string? PaymentIntentId { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }

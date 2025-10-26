@@ -11,12 +11,19 @@ namespace CardShop.Mappers
             return new OrderDto
             {
                 Id = order.Id,
+                Username = order.User.UserName,
                 CreatedAt = order.CreatedDate,
                 Status = order.Status,
                 PaymentProvider = order.PaymentProvider,
                 PaymentIntentId = order.PaymentIntentId,
-                TotalAmount = order.TotalAmount,
-                User = order.User,
+                PaidAt = order.PaidAt,
+                RecipientName = order.RecipientName,
+                Street = order.Street,
+                City = order.City,
+                State = order.State,
+                PostalCode = order.PostalCode,
+                Country = order.Country,
+                TotalAmount = order.TotalAmount,                
                 Items = order.OrderItems.Select(oi => new OrderItemDto
                 {
                     ProductId = oi.ProductId,

@@ -163,7 +163,7 @@ namespace CardShop.Services
             return new OrderDto
             {
                 Id = order.Id,
-                User = order.User,
+                Username = order.User.UserName,
                 PaymentIntentId = order.PaymentIntentId,
                 Status = order.Status,
                 CreatedAt = (DateTime)order.CreatedDate,
