@@ -6,7 +6,7 @@ namespace CardShop.Mappers
 {
     public static class OrderMapper
     {
-        public static OrderDto ToOrderDto(Order order)
+        public static OrderDto ToOrderDto(this Order order)
         {
             return new OrderDto
             {
