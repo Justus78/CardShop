@@ -11,13 +11,14 @@ namespace api.Repositories
 {
     public class AdminRepository : IAdminService
     {
-
         private readonly ApplicationDbContext _context;
 
         public AdminRepository(ApplicationDbContext context)
         {
             _context = context;
         }
+
+        // Get all orders for admin
         public async Task<List<OrderDto>> GetOrdersForAdminAsync()
         {
             var orders = await _context.Orders
@@ -30,6 +31,7 @@ namespace api.Repositories
             return orders.Select(OrderMapper.ToOrderDto).ToList();
         }
 
+        // Get single order by ID
         public async Task<OrderDto?> GetOrderByIdAsync(int id)
         {
             var order = await _context.Orders
@@ -39,42 +41,51 @@ namespace api.Repositories
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
-            {
                 return null;
-            }
 
-            return order.ToOrderDto();
+            return OrderMapper.ToOrderDto(order);
         }
 
-        public async Task<OrderDto> UpdateOrderStatusAsync(UpdateOrderStatusDto dto)
+        // Update order status
+        public async Task<OrderDto?> UpdateOrderStatusAsync(UpdateOrderStatusDto dto)
         {
-            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == dto.OrderId);
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.Id == dto.OrderId);
 
-            if (order == null) { return null; }
+            if (order == null)
+                return null;
 
-            return order.ToOrderDto();
+            // Update the order status
+            order.Status = dto.Status;
+
+            // Save changes to database
+            await _context.SaveChangesAsync();
+
+            // Return updated DTO
+            return OrderMapper.ToOrderDto(order);
         }
 
+        // Get all users
         public async Task<List<UserDto>> GetAllUsersAsync()
         {
             var users = await _context.Users
-                .Include(o => o.Orders)
+                .Include(u => u.Orders)
                 .ToListAsync();
 
-            return users.Select(UserMapper.ToUserDto)
-                .ToList();
-        }        
-
-        public async Task<ApplicationUser> GetUserByIdAsync(string userId)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user == null)
-            {
-                return null;
-            }
-
-            return user;
+            return users.Select(UserMapper.ToUserDto).ToList();
         }
-    } // end interface
-} // end namespace
+
+        // Get user by ID
+        public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Orders)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            return user; // returns null if not found
+        }
+    }
+}
