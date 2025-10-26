@@ -16,7 +16,7 @@ namespace CardShop.Mappers
                 PaymentProvider = order.PaymentProvider,
                 PaymentIntentId = order.PaymentIntentId,
                 TotalAmount = order.TotalAmount,
-                UserId = order.UserId,
+                User = order.User,
                 Items = order.OrderItems.Select(oi => new OrderItemDto
                 {
                     ProductId = oi.ProductId,
