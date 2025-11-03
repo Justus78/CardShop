@@ -12,6 +12,6 @@ namespace api.Interfaces
         Task<OrderDto> GetOrderByIdAsync(int id);
         Task<OrderDto> UpdateOrderStatusAsync(UpdateOrderStatusDto dto);
         public Task<List<UserDto>> GetAllUsersAsync();
-        Task<ApplicationUser> GetUserByIdAsync(string userId);
+        Task<UserDto> GetUserByIdAsync(string userId);
     }
 }

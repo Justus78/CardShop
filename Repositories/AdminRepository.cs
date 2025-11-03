@@ -79,13 +79,15 @@ namespace api.Repositories
         }
 
         // Get user by ID
-        public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
+        public async Task<UserDto?> GetUserByIdAsync(string userId)
         {
             var user = await _context.Users
                 .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return null;
 
-            return user; // returns null if not found
+            return UserMapper.ToUserDto(user); // returns null if not found
         }
     }
 }
