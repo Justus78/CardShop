@@ -6,7 +6,7 @@ namespace api.Models
     {
         public int Id { get; set; }
         public TradeInStatus Status { get; set; }
-        public decimal EstimatedValue { get; set; }
+        public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
