@@ -1,5 +1,4 @@
-﻿using api.Data;
-using api.DTOs.TradeIn;
+﻿using api.DTOs.TradeIn;
 using api.Interfaces;
 using api.Models;
 using CardShop.Data;
@@ -44,7 +43,7 @@ namespace api.Services
                 Id = tradeIn.Id,
                 EstimatedValue = tradeIn.EstimatedValue,
                 Status = tradeIn.Status,
-                CreatedAt = tradeIn.CreatedAt
+                SubmittedAt = tradeIn.CreatedAt
             };
         }
 
@@ -55,9 +54,9 @@ namespace api.Services
                 .Select(t => new TradeInSummaryDto
                 {
                     Id = t.Id,
-                    EstimatedTotalValue = t.EstimatedValue,
+                    EstimatedValue = t.EstimatedValue,
                     Status = t.Status,
-                    SubmittedAt = t.CreatedAt
+                    CreatedAt = t.CreatedAt
                 })
                 .ToListAsync();
         }
@@ -74,17 +73,18 @@ namespace api.Services
             {
                 Id = tradeIn.Id,
                 Status = tradeIn.Status,
-                EstimatedTotalValue = tradeIn.EstimatedValue,
+                EstimatedValue = tradeIn.EstimatedValue,
                 FinalValue = tradeIn.FinalValue,
                 CreatedAt = tradeIn.CreatedAt,
                 Items = tradeIn.TradeInItems.Select(i => new TradeInItemDto
                 {
+                    Id = i.Id,
                     CardName = i.CardName,
                     SetCode = i.SetCode,
                     Condition = i.Condition.ToString(),
                     Quantity = i.Quantity,
-                    EstimatedPrice = i.EstimatedUnitValue,
-                    FinalPrice = i.FinalPrice
+                    EstimatedUnitValue = i.EstimatedUnitValue,
+                    FinalUnitValue = i.FinalUnitValue
                 }).ToList()
             };
         }
@@ -108,10 +108,10 @@ namespace api.Services
             var tradeIn = await _context.TradeIns
                 .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
 
-            if (tradeIn == null || tradeIn.Status != TradeInStatus.FinalOfferSent)
+            if (tradeIn == null || tradeIn.Status != TradeInStatus.OfferSent)
                 return false;
 
-            tradeIn.Status = TradeInStatus.Approved;
+            tradeIn.Status = TradeInStatus.Accepted;
             tradeIn.UpdatedAt = DateTime.Now;
 
             return await _context.SaveChangesAsync() > 0;
@@ -122,7 +122,7 @@ namespace api.Services
             var tradeIn = await _context.TradeIns
                 .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
 
-            if (tradeIn == null || tradeIn.Status != TradeInStatus.FinalOfferSent)
+            if (tradeIn == null || tradeIn.Status != TradeInStatus.OfferSent)
                 return false;
 
             tradeIn.Status = TradeInStatus.Declined;
@@ -131,7 +131,7 @@ namespace api.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<decimal> GetEstimatedTradeValueAsync(List<CreateTradeInItemDto> items)
+        public async Task<decimal> GetEstimatedTradeValueAsync(List<TradeInItemCreateDto> items)
         {
             // TODO: integrate Scryfall pricing here
             decimal total = 0M;

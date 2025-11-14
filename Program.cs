@@ -141,6 +141,8 @@ builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+builder.Services.AddScoped<ITradeInService, TradeInService>();
+builder.Services.AddScoped<IAdminTradeInService, AdminTradeInService>();
 
 
 builder.Services.AddHttpClient<ISetService, SetService>(client =>
