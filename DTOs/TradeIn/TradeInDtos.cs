@@ -1,4 +1,5 @@
 ﻿using api.Models;
+using static api.Enums.ProductEnums;
 
 namespace api.DTOs.TradeIn
 {
@@ -12,23 +13,23 @@ namespace api.DTOs.TradeIn
         public string CardName { get; set; } = string.Empty;
         public string SetCode { get; set; } = string.Empty;
         public int Quantity { get; set; }
-        public string Condition { get; set; } = "NearMint";
-        public decimal EstimatedPrice { get; set; } // per unit from Scryfall
+        public CardCondition Condition { get; set; } = CardCondition.NearMint;
+        public decimal? EstimatedPrice { get; set; } // per unit from Scryfall
     }
 
     public class TradeInDto
     {
         public int Id { get; set; }
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
-        public decimal EstimatedValue { get; set; }
+        public decimal? EstimatedValue { get; set; }
         public DateTime SubmittedAt { get; set; }
     }
 
     public class TradeInSummaryDto
     {
         public int Id { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public decimal EstimatedValue { get; set; }
+        public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
+        public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
     }
@@ -40,15 +41,15 @@ namespace api.DTOs.TradeIn
         public string SetCode { get; set; } = string.Empty;
         public string Condition { get; set; } = string.Empty;
         public int Quantity { get; set; }
-        public decimal EstimatedUnitValue { get; set; }
+        public decimal? EstimatedUnitValue { get; set; }
         public decimal? FinalUnitValue { get; set; }
     }
 
     public class TradeInDetailDto
     {
         public int Id { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public decimal EstimatedValue { get; set; }
+        public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
+        public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -60,8 +61,8 @@ namespace api.DTOs.TradeIn
     {
         public int Id { get; set; }
         public string UserEmail { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public decimal EstimatedValue { get; set; }
+        public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
+        public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
     }
@@ -70,10 +71,24 @@ namespace api.DTOs.TradeIn
     {
         public int Id { get; set; }
         public string UserEmail { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public decimal EstimatedValue { get; set; }
+        public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
+        public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<TradeInItemDto> Items { get; set; } = [];
+    }
+
+    public class UpdateTradeInStatusDto
+    {
+        // New status to set for the trade-in
+        public TradeInStatus Status { get; set; }
+        // Optional admin note (why status changed)
+        public string? AdminNote { get; set; }
+    }
+
+    public class UpdateTradeInItemValueDto
+    {
+        // The final per-unit value that admin assigns to this item
+        public decimal FinalUnitValue { get; set; }
     }
 }

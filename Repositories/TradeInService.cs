@@ -3,6 +3,7 @@ using api.Interfaces;
 using api.Models;
 using CardShop.Data;
 using Microsoft.EntityFrameworkCore;
+using static api.Enums.ProductEnums;
 
 namespace api.Services
 {
@@ -27,7 +28,7 @@ namespace api.Services
                 {
                     CardName = i.CardName,
                     SetCode = i.SetCode,
-                    Condition = Enum.Parse<CardCondition>(i.Condition),
+                    Condition = i.Condition,
                     Quantity = i.Quantity,
                     EstimatedUnitValue = 0M
                 }).ToList()
@@ -134,6 +135,7 @@ namespace api.Services
         public async Task<decimal> GetEstimatedTradeValueAsync(List<TradeInItemCreateDto> items)
         {
             // TODO: integrate Scryfall pricing here
+            // decide how to price the trade credir based on each card price
             decimal total = 0M;
 
             foreach (var item in items)

@@ -7,4 +7,4 @@
         public List<TradeInItemFinalValueDto>? UpdatedItems { get; set; } // optional item-level detail
     }
 }
-}
+

@@ -4,11 +4,12 @@
     {
         Submitted,
         Estimated,
-        PendingShipment,
+        Shipped,
         Received,
         UnderReview,
         OfferSent,
         Accepted,
+        Credited,
         Declined,
         AutoCompleted,
         Returned

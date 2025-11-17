@@ -1,4 +1,6 @@
-﻿namespace api.Models
+﻿using static api.Enums.ProductEnums;
+
+namespace api.Models
 {
     public class TradeInItem
     {
@@ -6,7 +8,7 @@
         public string? CardName { get; set;}
         public string? SetCode { get; set; }
         public int Quantity { get; set; }
-        public CardCondition Condition { get; set; } = CardCondition.NM;
+        public CardCondition Condition { get; set; } = CardCondition.NearMint;
         public decimal EstimatedUnitValue { get; set; }
         public decimal FinalUnitValue { get; set; }
 

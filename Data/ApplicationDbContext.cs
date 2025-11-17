@@ -10,7 +10,8 @@ namespace CardShop.Data
     {
         private readonly IConfiguration _config;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration config) : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration config)
+            : base(options)
         {
             _config = config;
         }
@@ -29,29 +30,62 @@ namespace CardShop.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Seed roles
-            List<IdentityRole> roles = new List<IdentityRole>
-            {
-                new IdentityRole { Name = "Admin", NormalizedName = "ADMIN" },
-                new IdentityRole { Name = "User", NormalizedName = "USER" }
-            };
-            modelBuilder.Entity<IdentityRole>().HasData(roles);
+            // ---------------------------------------
+            // Seed Roles with FIXED IDs
+            // ---------------------------------------
+            const string ADMIN_ROLE_ID = "role-admin-001";
+            const string USER_ROLE_ID = "role-user-001";
 
+            var adminRole = new IdentityRole
+            {
+                Id = ADMIN_ROLE_ID,
+                Name = "Admin",
+                NormalizedName = "ADMIN"
+            };
+
+            var userRole = new IdentityRole
+            {
+                Id = USER_ROLE_ID,
+                Name = "User",
+                NormalizedName = "USER"
+            };
+
+            modelBuilder.Entity<IdentityRole>().HasData(adminRole, userRole);
+
+            // ---------------------------------------
             // Seed Admin User
+            // ---------------------------------------
+            const string ADMIN_USER_ID = "admin-user-110022554411";
+
             var hasher = new PasswordHasher<ApplicationUser>();
             var adminUser = new ApplicationUser
             {
-                Id = "admin-user-110022554411",
+                Id = ADMIN_USER_ID,
                 UserName = _config["AdminUser:Username"],
                 NormalizedUserName = _config["AdminUser:Username"].ToUpper(),
                 Email = "Stars787878@aol.com",
                 NormalizedEmail = "STARS787878@AOL.COM",
                 EmailConfirmed = true
             };
+
             adminUser.PasswordHash = hasher.HashPassword(adminUser, _config["AdminUser:Password"]);
+
             modelBuilder.Entity<ApplicationUser>().HasData(adminUser);
 
+            // ---------------------------------------
+            // Seed Admin User → Admin Role Link
+            // ---------------------------------------
+            modelBuilder.Entity<IdentityUserRole<string>>().HasData(
+                new IdentityUserRole<string>
+                {
+                    UserId = ADMIN_USER_ID,
+                    RoleId = ADMIN_ROLE_ID
+                }
+            );
+
+            // ---------------------------------------
             // Relationships
+            // ---------------------------------------
             modelBuilder.Entity<ApplicationUser>()
                 .HasMany(u => u.CartItems)
                 .WithOne(ci => ci.User)
@@ -74,16 +108,16 @@ namespace CardShop.Data
                 .HasForeignKey<StoreCredit>(sc => sc.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // One-to-many: StoreCredit ↔ StoreCreditTransactions
+            // One-to-many: StoreCredit ↔ Transactions
             modelBuilder.Entity<StoreCredit>()
                 .HasMany(sc => sc.Transactions)
                 .WithOne(t => t.StoreCredit)
                 .HasForeignKey(t => t.StoreCreditId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // One-to-many: TradeIn ↔ TradeInItems
+            // One-to-many: TradeIn ↔ Items
             modelBuilder.Entity<TradeIn>()
-                .HasMany(ti => ti.TradeInItems)
+                .HasMany(t => t.TradeInItems)
                 .WithOne(i => i.TradeIn)
                 .HasForeignKey(i => i.TradeInId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -105,7 +139,9 @@ namespace CardShop.Data
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId);
 
-            // Unique constraints
+            // ---------------------------------------
+            // Indexes & Constraints
+            // ---------------------------------------
             modelBuilder.Entity<ApplicationUser>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
@@ -114,7 +150,9 @@ namespace CardShop.Data
                 .HasIndex(ci => new { ci.UserId, ci.ProductId })
                 .IsUnique();
 
+            // ---------------------------------------
             // Decimal precision
+            // ---------------------------------------
             modelBuilder.Entity<Product>()
                 .Property(p => p.Price)
                 .HasColumnType("decimal(18,2)");
