@@ -22,7 +22,7 @@ namespace api.DTOs.TradeIn
         public int Id { get; set; }
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }
-        public DateTime SubmittedAt { get; set; }
+        public DateTime SubmittedAt { get; set; } = DateTime.Now;
     }
 
     public class TradeInSummaryDto
