@@ -17,6 +17,23 @@ namespace api.DTOs.TradeIn
         public decimal? EstimatedPrice { get; set; } // per unit from Scryfall
     }
 
+    // Add single item to an existing trade-in
+    public class AddTradeInItemDto
+    {
+        public string CardName { get; set; } = string.Empty;
+        public string SetCode { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public CardCondition Condition { get; set; } = CardCondition.NearMint;
+        public decimal? EstimatedUnitValue { get; set; }
+    }
+
+    // Update item in existing trade-in
+    public class UpdateTradeInItemDto
+    {
+        public int Quantity { get; set; }
+        public CardCondition Condition { get; set; }
+    }
+
     public class TradeInDto
     {
         public int Id { get; set; }
@@ -53,6 +70,13 @@ namespace api.DTOs.TradeIn
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public List<TradeInItemDto> Items { get; set; } = [];
+    }
+
+    // Pending trade-in for frontend
+    public class TradeInPendingDto
+    {
+        public int Id { get; set; }
         public List<TradeInItemDto> Items { get; set; } = [];
     }
 
