@@ -2,6 +2,7 @@
 {
     public enum TradeInStatus
     {
+        Draft,
         Submitted,
         Estimated,
         Shipped,
