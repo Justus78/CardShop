@@ -55,13 +55,15 @@ namespace api.Services
         {
             return await _context.TradeIns
                 .Where(t => t.UserId == userId && t.Status != TradeInStatus.Draft)
+                .Include(t => t.TradeInItems)
                 .Select(t => new TradeInSummaryDto
                 {
                     Id = t.Id,
                     Status = t.Status,
                     EstimatedValue = t.EstimatedValue,
                     FinalValue = t.FinalValue,
-                    CreatedAt = t.CreatedAt
+                    CreatedAt = t.CreatedAt,
+                    Items = t.TradeInItems                    
                 }).ToListAsync();
         }
 
