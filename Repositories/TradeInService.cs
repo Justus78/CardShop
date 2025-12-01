@@ -54,7 +54,7 @@ namespace api.Services
         public async Task<IEnumerable<TradeInSummaryDto>> GetUserTradeInsAsync(string userId)
         {
             return await _context.TradeIns
-                .Where(t => t.UserId == userId && t.Status != TradeInStatus.Draft)
+                .Where(t => t.UserId == userId)
                 .Include(t => t.TradeInItems)
                 .Select(t => new TradeInSummaryDto
                 {

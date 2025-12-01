@@ -33,7 +33,7 @@ namespace api.Controllers
         }
 
         [HttpPost("draft/items")]
-        public async Task<IActionResult> AddDraftItem([FromBody] TradeInItemCreateDto dto)
+        public async Task<IActionResult> AddDraftItem([FromForm] TradeInItemCreateDto dto)
         {
             var userId = GetUserId();
             var draft = await _tradeInService.AddItemToDraftAsync(userId, dto);
