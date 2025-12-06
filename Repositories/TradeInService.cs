@@ -67,18 +67,18 @@ namespace api.Services
                 }).ToListAsync();
         }
 
-        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId)
+        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(int tradeInId)
         {
             var tradeIn = await _context.TradeIns
                 .Include(t => t.TradeInItems)
-                .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
+                .FirstOrDefaultAsync(t => t.Id == tradeInId);
 
             if (tradeIn == null) return null;
 
             return MapToTradeInDetailDto(tradeIn);
         }
 
-        public async Task<bool> CancelTradeInAsync(string userId, int tradeInId)
+        public async Task<bool> ReturnTradeInAsync(string userId, int tradeInId)
         {
             var tradeIn = await _context.TradeIns
                 .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
@@ -201,16 +201,32 @@ namespace api.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<TradeInDto?> SubmitDraftAsync(string userId)
+        public async Task<bool> CancelTradeInAsync(string userId, int tradeInId)
         {
+            var tradeIn = await _context.TradeIns.FirstOrDefaultAsync(tr => tr.UserId == userId && tr.Id == tradeInId);
+
+            if (tradeIn == null) return false;
+
+            _context.TradeIns.Remove(tradeIn);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<TradeInDto?> SubmitDraftAsync(int tradeinId)
+        {
+            // get the draft trade in correctly and efficiently
+            //
+            // update the status of the draft to submitted
+            //
+            // email to the user confirming that the trade in is submitted
+
             var draft = await _context.TradeIns
                 .Include(t => t.TradeInItems)
-                .FirstOrDefaultAsync(t => t.UserId == userId && t.Status == TradeInStatus.Draft);
+                .FirstOrDefaultAsync(tr => tr.Id == tradeinId);
 
             if (draft == null) return null;
 
             draft.Status = TradeInStatus.Submitted;
-            draft.EstimatedValue = draft.TradeInItems.Sum(i => i.EstimatedUnitValue * i.Quantity);
+            //draft.EstimatedValue = draft.TradeInItems.Sum(i => i.EstimatedUnitValue * i.Quantity);
             draft.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -220,7 +236,7 @@ namespace api.Services
                 Id = draft.Id,
                 Status = draft.Status,
                 SubmittedAt = draft.UpdatedAt ?? draft.CreatedAt,
-                EstimatedValue = draft.EstimatedValue
+                //EstimatedValue = draft.EstimatedValue
             };
         }
 
@@ -405,5 +421,6 @@ namespace api.Services
                 }).ToList()
             };
         }
+
     }
 }

@@ -40,7 +40,7 @@ namespace api.Controllers
             return Ok(draft);
         }
 
-        [HttpDelete("draft/items/{itemId}")]
+        [HttpDelete("draft/items/{itemId:int}")]
         public async Task<IActionResult> RemoveDraftItem(int itemId)
         {
             var userId = GetUserId();
@@ -48,12 +48,27 @@ namespace api.Controllers
             return success ? NoContent() : BadRequest("Unable to remove item.");
         }
 
-        [HttpPost("draft/submit")]
-        public async Task<IActionResult> SubmitDraftTradeIn()
+        [HttpPost("draft/submit/{tradeInId:int}")]
+        public async Task<IActionResult> SubmitDraftTradeIn(int tradeInId)
         {
             var userId = GetUserId();
-            var result = await _tradeInService.SubmitDraftAsync(userId);
+            var result = await _tradeInService.SubmitDraftAsync(tradeInId);
             return result == null ? BadRequest("Draft submission failed.") : Ok(result);
+        }
+
+        [HttpDelete("draft/deleteDraft/{tradeInId:int}")]
+        
+        public async Task<IActionResult> DeleteTradeIn(int tradeInId)
+        {
+            var userId = GetUserId();
+            var draftTradeIn = await _tradeInService.GetTradeInByIdAsync(tradeInId);
+
+            if (draftTradeIn == null)
+                return NotFound();
+
+            var result = await _tradeInService.CancelTradeInAsync(userId, draftTradeIn.Id);
+
+            return Ok(result);
         }
 
         // ----------------------------
@@ -68,23 +83,23 @@ namespace api.Controllers
             return Ok(tradeIns);
         }
 
-        [HttpGet("{tradeInId}")]
+        [HttpGet("{tradeInId:int}")]
         public async Task<IActionResult> GetTradeInById(int tradeInId)
         {
             var userId = GetUserId();
-            var tradeIn = await _tradeInService.GetTradeInByIdAsync(userId, tradeInId);
+            var tradeIn = await _tradeInService.GetTradeInByIdAsync(tradeInId);
             return tradeIn == null ? NotFound("Trade-in not found.") : Ok(tradeIn);
         }
 
-        [HttpDelete("{tradeInId}")]
-        public async Task<IActionResult> CancelTradeIn(int tradeInId)
+        [HttpPatch("{tradeInId:int}")]
+        public async Task<IActionResult> ReturnTradeIn(int tradeInId)
         {
             var userId = GetUserId();
-            var success = await _tradeInService.CancelTradeInAsync(userId, tradeInId);
+            var success = await _tradeInService.ReturnTradeInAsync(userId, tradeInId);
             return success ? NoContent() : BadRequest("Trade-in cannot be canceled.");
         }
 
-        [HttpPost("{tradeInId}/confirm")]
+        [HttpPost("{tradeInId:int}/confirm")]
         public async Task<IActionResult> ConfirmFinalOffer(int tradeInId)
         {
             var userId = GetUserId();
@@ -92,7 +107,7 @@ namespace api.Controllers
             return success ? Ok("Final offer accepted.") : BadRequest("Unable to confirm offer.");
         }
 
-        [HttpPost("{tradeInId}/decline")]
+        [HttpPost("{tradeInId:int}/decline")]
         public async Task<IActionResult> DeclineFinalOffer(int tradeInId)
         {
             var userId = GetUserId();
