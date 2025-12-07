@@ -51,7 +51,7 @@ namespace api.Controllers
         [HttpPost("draft/submit/{tradeInId:int}")]
         public async Task<IActionResult> SubmitDraftTradeIn(int tradeInId)
         {
-            var userId = GetUserId();
+            //var userId = GetUserId();
             var result = await _tradeInService.SubmitDraftAsync(tradeInId);
             return result == null ? BadRequest("Draft submission failed.") : Ok(result);
         }
