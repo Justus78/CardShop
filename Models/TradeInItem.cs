@@ -11,6 +11,8 @@ namespace api.Models
         public CardCondition Condition { get; set; } = CardCondition.NearMint;
         public decimal EstimatedUnitValue { get; set; }
         public decimal FinalUnitValue { get; set; }
+        public bool IsFoil { get; set; } = false;
+        public CardStyle ArtStyle { get; set; } = CardStyle.Regular;
 
         // FK for trade in //
         public int TradeInId { get; set; }
