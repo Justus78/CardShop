@@ -2,6 +2,7 @@
 {
     public enum FoilType
     {
+        NonFoil,
         Traditional,
         Halo,
         Etched,
