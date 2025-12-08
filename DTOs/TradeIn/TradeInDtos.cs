@@ -15,16 +15,8 @@ namespace api.DTOs.TradeIn
         public int Quantity { get; set; }
         public CardCondition Condition { get; set; } = CardCondition.NearMint;
         public decimal? EstimatedPrice { get; set; } // per unit from Scryfall
-    }
-
-    // Add single item to an existing trade-in
-    public class AddTradeInItemDto
-    {
-        public string CardName { get; set; } = string.Empty;
-        public string SetCode { get; set; } = string.Empty;
-        public int Quantity { get; set; }
-        public CardCondition Condition { get; set; } = CardCondition.NearMint;
-        public decimal? EstimatedUnitValue { get; set; }
+        public CardStyle CardStyle { get; set; } = CardStyle.Regular;
+        public FoilType FoilType { get; set; } = FoilType.NonFoil;
     }
 
     // Update item in existing trade-in
@@ -40,6 +32,7 @@ namespace api.DTOs.TradeIn
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }
         public DateTime SubmittedAt { get; set; } = DateTime.Now;
+
     }
 
     public class TradeInSummaryDto
@@ -61,6 +54,9 @@ namespace api.DTOs.TradeIn
         public int Quantity { get; set; }
         public decimal? EstimatedUnitValue { get; set; }
         public decimal? FinalUnitValue { get; set; }
+        public CardStyle? CardStyle { get; set; }
+        public FoilType? FoilType { get; set; }
+
     }
 
     public class TradeInDetailDto
@@ -90,6 +86,7 @@ namespace api.DTOs.TradeIn
         public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
         public DateTime CreatedAt { get; set; }
+        public List<TradeInItem> Items { get; set; } = [];
     }
 
     public class TradeInDetailsDto

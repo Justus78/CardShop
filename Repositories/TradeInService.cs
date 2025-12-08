@@ -178,7 +178,9 @@ namespace api.Services
                 SetCode = dto.SetCode,
                 Quantity = dto.Quantity,
                 Condition = dto.Condition,
-                EstimatedUnitValue = dto.EstimatedPrice ?? 0M
+                EstimatedUnitValue = dto.EstimatedPrice ?? 0M,
+                ArtStyle = dto.CardStyle,
+                FoilType = dto.FoilType,
             };
 
             draft.TradeInItems.Add(item);
@@ -394,7 +396,9 @@ namespace api.Services
                     Condition = i.Condition.ToString(),
                     Quantity = i.Quantity,
                     EstimatedUnitValue = i.EstimatedUnitValue,
-                    FinalUnitValue = i.FinalUnitValue
+                    FinalUnitValue = i.FinalUnitValue,
+                    CardStyle = i.ArtStyle,
+                    FoilType = i.FoilType
                 }).ToList()
             };
         }
