@@ -8,6 +8,7 @@ namespace api.Models
         public string? CardName { get; set;}
         public string? SetCode { get; set; }
         public int Quantity { get; set; }
+        public string? ImageUrl { get; set; }
         public CardCondition Condition { get; set; } = CardCondition.NearMint;
         public decimal EstimatedUnitValue { get; set; }
         public decimal FinalUnitValue { get; set; }
