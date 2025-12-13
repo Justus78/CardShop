@@ -15,6 +15,7 @@ namespace api.DTOs.TradeIn
         public int Quantity { get; set; }
         public CardCondition Condition { get; set; } = CardCondition.NearMint;
         public decimal? EstimatedPrice { get; set; } // per unit from Scryfall
+        public string? ImageUrl { get; set; }
         public CardStyle CardStyle { get; set; } = CardStyle.Regular;
         public FoilType FoilType { get; set; } = FoilType.NonFoil;
     }
@@ -51,6 +52,7 @@ namespace api.DTOs.TradeIn
         public string CardName { get; set; } = string.Empty;
         public string SetCode { get; set; } = string.Empty;
         public string Condition { get; set; } = string.Empty;
+        public string? ImageUrl {  get; set; }
         public int Quantity { get; set; }
         public decimal? EstimatedUnitValue { get; set; }
         public decimal? FinalUnitValue { get; set; }
