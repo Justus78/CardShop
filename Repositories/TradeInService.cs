@@ -395,6 +395,7 @@ namespace api.Services
                     SetCode = i.SetCode,
                     Condition = i.Condition.ToString(),
                     Quantity = i.Quantity,
+                    ImageUrl = i.ImageUrl,
                     EstimatedUnitValue = i.EstimatedUnitValue,
                     FinalUnitValue = i.FinalUnitValue,
                     CardStyle = i.ArtStyle,
@@ -420,6 +421,7 @@ namespace api.Services
                     SetCode = i.SetCode,
                     Condition = i.Condition.ToString(),
                     Quantity = i.Quantity,
+                    ImageUrl = i.ImageUrl,
                     EstimatedUnitValue = i.EstimatedUnitValue,
                     FinalUnitValue = i.FinalUnitValue
                 }).ToList()
