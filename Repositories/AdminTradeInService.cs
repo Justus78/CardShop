@@ -37,7 +37,8 @@ namespace api.Repositories
                     Status = t.Status,
                     EstimatedValue = t.EstimatedValue,
                     FinalValue = t.FinalValue,
-                    CreatedAt = t.CreatedAt
+                    CreatedAt = t.CreatedAt,
+                    Items = t.TradeInItems.ToList()
                 })
                 .ToListAsync();
         }

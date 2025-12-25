@@ -179,6 +179,7 @@ namespace api.Services
                 Quantity = dto.Quantity,
                 Condition = dto.Condition,
                 EstimatedUnitValue = dto.EstimatedPrice ?? 0M,
+                ImageUrl = dto.ImageUrl,
                 ArtStyle = dto.CardStyle,
                 FoilType = dto.FoilType,
             };
