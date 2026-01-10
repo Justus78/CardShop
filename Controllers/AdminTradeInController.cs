@@ -63,7 +63,11 @@ namespace api.Controllers
             var success = await _adminTradeInService.UpdateItemFinalValueAsync(itemId, dto.FinalUnitValue);
             if (!success) return NotFound("Item not found or could not be updated.");
 
-            return Ok("Item value updated.");
+            return Ok(new
+            {
+                itemId,
+                finalUnitValue = dto.FinalUnitValue
+            });
         }
 
         /// <summary>

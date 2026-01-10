@@ -38,7 +38,8 @@ namespace api.Repositories
                     EstimatedValue = t.EstimatedValue,
                     FinalValue = t.FinalValue,
                     CreatedAt = t.CreatedAt,
-                    Items = t.TradeInItems.ToList()
+                    Items = t.TradeInItems.ToList(),
+                    
                 })
                 .ToListAsync();
         }
@@ -68,7 +69,8 @@ namespace api.Repositories
                     Condition = i.Condition.ToString(),
                     Quantity = i.Quantity,
                     EstimatedUnitValue = i.EstimatedUnitValue,
-                    FinalUnitValue = i.FinalUnitValue
+                    FinalUnitValue = i.FinalUnitValue,
+                    ImageUrl = i.ImageUrl,
                 }).ToList()
             };
         }
@@ -131,7 +133,7 @@ namespace api.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
-
+        
 
         public async Task<bool> CreditUserAccountAsync(int tradeInId)
         {
