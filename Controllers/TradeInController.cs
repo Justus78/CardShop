@@ -99,20 +99,20 @@ namespace api.Controllers
             return success ? NoContent() : BadRequest("Trade-in cannot be canceled.");
         }
 
-        [HttpPost("{tradeInId:int}/confirm")]
+        [HttpPost("{tradeInId:int}/accept-offer")]
         public async Task<IActionResult> ConfirmFinalOffer(int tradeInId)
         {
             var userId = GetUserId();
             var success = await _tradeInService.ConfirmFinalOfferAsync(userId, tradeInId);
-            return success ? Ok("Final offer accepted.") : BadRequest("Unable to confirm offer.");
+            return success ? Ok() : BadRequest();
         }
 
-        [HttpPost("{tradeInId:int}/decline")]
+        [HttpPost("{tradeInId:int}/decline-offer")]
         public async Task<IActionResult> DeclineFinalOffer(int tradeInId)
         {
             var userId = GetUserId();
             var success = await _tradeInService.DeclineFinalOfferAsync(userId, tradeInId);
-            return success ? Ok("Final offer declined.") : BadRequest("Unable to decline offer.");
+            return success ? Ok() : BadRequest();
         }
 
         [HttpPost("estimate")]
