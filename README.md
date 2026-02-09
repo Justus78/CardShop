@@ -33,11 +33,13 @@ CardShop is a RESTful ASP.NET Core Web API that powers a full-stack trading card
 
 ## Screen Shots
 
-## Account
+## File Structure
+![File Structure](Screenshots/file-structure.png)
+
+## Account Controller Endpoints
 ![Account Endpoints](Screenshots/account-endpoints.png)
 
-## Stripe
+## Stripe Create Intent
 ![Create Intent](Screenshots/create-stripe-intent.png)
 
-## Files
-![File Structure](Screenshots/file-structure.png)
+
