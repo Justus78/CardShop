@@ -104,7 +104,8 @@ namespace api.Controllers
         {
             var userId = GetUserId();
             var success = await _tradeInService.ConfirmFinalOfferAsync(userId, tradeInId);
-            return success ? Ok() : BadRequest();
+            return success ? Ok(new {message = "Offer accepted successfully."}) : 
+                BadRequest( new {message = "Offer declined successfully."});
         }
 
         [HttpPost("{tradeInId:int}/decline-offer")]
@@ -112,7 +113,8 @@ namespace api.Controllers
         {
             var userId = GetUserId();
             var success = await _tradeInService.DeclineFinalOfferAsync(userId, tradeInId);
-            return success ? Ok() : BadRequest();
+            return success ? Ok(new { message = "Offer accepted successfully." }) :
+                BadRequest(new { message = "Offer declined successfully." });
         }
 
         [HttpPost("estimate")]
