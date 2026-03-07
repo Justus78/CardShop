@@ -181,6 +181,7 @@ namespace CardShop.Controllers
                 user.Id,
                 user.UserName,
                 user.Email,
+                user.StoreCredit,
                 roles
             });
         }
