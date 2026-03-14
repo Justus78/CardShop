@@ -288,6 +288,22 @@ namespace api.Services
             _context.TradeInItems.Remove(item);
             return await _context.SaveChangesAsync() > 0;
         }
+        public async Task<bool> UpdateDraftItemQuantityAsync(string userId, int itemId, int quantity)
+        {
+            var item = await _context.TradeInItems
+                .Include(i => i.TradeIn)
+                .FirstOrDefaultAsync(i =>
+                    i.Id == itemId &&
+                    i.TradeIn.UserId == userId &&
+                    i.TradeIn.Status == TradeInStatus.Draft);
+
+            if (item == null) return false;
+
+            item.Quantity = quantity;
+            item.TradeIn.UpdatedAt = DateTime.Now;
+
+            return await _context.SaveChangesAsync() > 0;
+        }
 
         public async Task<TradeInItemDto?> UpdateItemAsync(string userId, int tradeInId, int itemId, TradeInItemCreateDto dto)
         {

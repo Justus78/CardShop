@@ -27,6 +27,11 @@ namespace api.DTOs.TradeIn
         public CardCondition Condition { get; set; }
     }
 
+    public class UpdateQuantityDto
+    {
+        public int Quantity { get; set; }
+    }
+
     public class TradeInDto
     {
         public int Id { get; set; }

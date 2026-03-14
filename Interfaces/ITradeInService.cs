@@ -26,6 +26,7 @@ namespace api.Interfaces
         Task<TradeInDetailDto> GetOrCreateDraftAsync(string userId);
         Task<TradeInDetailDto> AddItemToDraftAsync(string userId, TradeInItemCreateDto dto);
         Task<bool> RemoveItemFromDraftAsync(string userId, int itemId);
+        Task<bool> UpdateDraftItemQuantityAsync(string userId, int itemId, int quantity);
         Task<bool> CancelTradeInAsync(string userId, int tradeIn);
         Task<TradeInDto?> SubmitDraftAsync(int tradeInId);
 

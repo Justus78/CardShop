@@ -45,7 +45,16 @@ namespace api.Controllers
         {
             var userId = GetUserId();
             var success = await _tradeInService.RemoveItemFromDraftAsync(userId, itemId);
-            return success ? NoContent() : BadRequest("Unable to remove item.");
+            return success ? NoContent() : BadRequest();
+        }
+
+        [HttpPatch("draft/items/{itemId:int}/quantity")]
+        public async Task<IActionResult> UpdateDraftItemQuantity(int itemId, [FromBody] UpdateQuantityDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _tradeInService.UpdateDraftItemQuantityAsync(userId, itemId, dto.Quantity);
+
+            return result ? NoContent() : BadRequest();
         }
 
         [HttpPost("draft/submit/{tradeInId:int}")]
