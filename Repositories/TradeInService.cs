@@ -164,6 +164,7 @@ namespace api.Services
                 .FirstOrDefaultAsync(t => t.UserId == userId && t.Status == TradeInStatus.Draft);
 
             if (draft == null)
+            {
                 draft = new TradeIn
                 {
                     UserId = userId,
@@ -171,20 +172,38 @@ namespace api.Services
                     CreatedAt = DateTime.Now,
                     TradeInItems = new List<TradeInItem>()
                 };
+            }
 
-            var item = new TradeInItem
+            //  Check if identical card already exists
+            var existingItem = draft.TradeInItems.FirstOrDefault(i =>
+                i.CardName == dto.CardName &&
+                i.SetCode == dto.SetCode &&
+                i.Condition == dto.Condition &&
+                i.ArtStyle == dto.CardStyle &&
+                i.FoilType == dto.FoilType
+            );
+
+            if (existingItem != null)
             {
-                CardName = dto.CardName,
-                SetCode = dto.SetCode,
-                Quantity = dto.Quantity,
-                Condition = dto.Condition,
-                EstimatedUnitValue = dto.EstimatedPrice ?? 0M,
-                ImageUrl = dto.ImageUrl,
-                ArtStyle = dto.CardStyle,
-                FoilType = dto.FoilType,
-            };
+                // Just increase quantity
+                existingItem.Quantity += dto.Quantity;
+            }
+            else
+            {
+                var item = new TradeInItem
+                {
+                    CardName = dto.CardName,
+                    SetCode = dto.SetCode,
+                    Quantity = dto.Quantity,
+                    Condition = dto.Condition,
+                    EstimatedUnitValue = dto.EstimatedPrice ?? 0M,
+                    ImageUrl = dto.ImageUrl,
+                    ArtStyle = dto.CardStyle,
+                    FoilType = dto.FoilType
+                };
 
-            draft.TradeInItems.Add(item);
+                draft.TradeInItems.Add(item);
+            }
 
             _context.TradeIns.Update(draft);
             await _context.SaveChangesAsync();
