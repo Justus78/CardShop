@@ -50,3 +50,7 @@ coverage/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Other
+.vs
+.vs/
