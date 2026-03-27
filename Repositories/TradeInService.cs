@@ -279,7 +279,9 @@ namespace api.Services
                 Quantity = dto.Quantity,
                 Condition = dto.Condition,
                 EstimatedUnitValue = dto.EstimatedPrice ?? 0M,
-                TradeInId = tradeInId
+                TradeInId = tradeInId,
+                IsFoil = dto.IsFoil,
+                FoilType = dto.FoilType,
             };
 
             _context.TradeInItems.Add(item);
@@ -292,7 +294,9 @@ namespace api.Services
                 SetCode = item.SetCode,
                 Condition = item.Condition.ToString(),
                 Quantity = item.Quantity,
-                EstimatedUnitValue = item.EstimatedUnitValue
+                EstimatedUnitValue = item.EstimatedUnitValue,
+                FoilType = item.FoilType,
+                IsFoil = item.IsFoil,
             };
         }
 
@@ -337,6 +341,8 @@ namespace api.Services
             item.Quantity = dto.Quantity;
             item.Condition = dto.Condition;
             item.EstimatedUnitValue = dto.EstimatedPrice ?? item.EstimatedUnitValue;
+            item.IsFoil = dto.IsFoil;
+            item.FoilType = dto.FoilType;
 
             item.TradeIn.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
@@ -349,7 +355,9 @@ namespace api.Services
                 Condition = item.Condition.ToString(),
                 Quantity = item.Quantity,
                 EstimatedUnitValue = item.EstimatedUnitValue,
-                FinalUnitValue = item.FinalUnitValue
+                FinalUnitValue = item.FinalUnitValue,
+                IsFoil = item.IsFoil,
+                FoilType = dto.FoilType,                
             };
         }
 
