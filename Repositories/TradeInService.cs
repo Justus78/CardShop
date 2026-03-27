@@ -435,7 +435,8 @@ namespace api.Services
                     EstimatedUnitValue = i.EstimatedUnitValue,
                     FinalUnitValue = i.FinalUnitValue,
                     CardStyle = i.ArtStyle,
-                    FoilType = i.FoilType
+                    FoilType = i.FoilType,
+                    IsFoil = i.IsFoil   
                 }).ToList()
             };
         }
@@ -459,7 +460,9 @@ namespace api.Services
                     Quantity = i.Quantity,
                     ImageUrl = i.ImageUrl,
                     EstimatedUnitValue = i.EstimatedUnitValue,
-                    FinalUnitValue = i.FinalUnitValue
+                    FinalUnitValue = i.FinalUnitValue,
+                    IsFoil = i.IsFoil,
+                    FoilType = i.FoilType
                 }).ToList()
             };
         }
