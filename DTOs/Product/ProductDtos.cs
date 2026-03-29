@@ -6,7 +6,7 @@ namespace api.DTOs.Product
     public class CreateProductDto
     {
         [Required]
-        [MaxLength(255,ErrorMessage = "Name is too long")]
+        [MaxLength(255, ErrorMessage = "Name is too long")]
         public string Name { get; set; } = null!;
         [Required]
         public string Description { get; set; } = null!;
@@ -15,10 +15,14 @@ namespace api.DTOs.Product
         [Required]
         public int StockQuantity { get; set; }
         public string? ProductImage { get; set; }
+        public bool? BestSeller { get; set; } = false;
 
         [Required]
         public ProductCategory ProductCategory { get; set; }
+    }
 
+    public class CardDetails 
+    {
         // Optional card-specific fields
         public bool IsFoil { get; set; } = false;
         public CardCondition? CardCondition { get; set; }
@@ -26,6 +30,15 @@ namespace api.DTOs.Product
         public CardType? CardType { get; set; }
         public string? CollectionNumber { get; set; }
         public string? SetName { get; set; }
-        public bool? BestSeller { get; set; } = false;
     }
+
+    public class UpdateProductDto
+    {
+        [Required]
+        public decimal Price { get; set; }
+        [Required]
+        public int StockQuantity { get; set; }
+
+    }
+
 }
