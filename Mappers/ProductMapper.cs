@@ -26,6 +26,7 @@ namespace api.Mappers
                 product.CardDetails = new CardDetail
                 {
                     IsFoil = dto.CardDetails.IsFoil,
+                    FoilType = dto.CardDetails.FoilType,
                     CardCondition = dto.CardDetails.CardCondition,
                     CardRarity = dto.CardDetails.CardRarity,
                     CardType = dto.CardDetails.CardType,

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using api.Models;
+using System.ComponentModel.DataAnnotations;
 using static api.Enums.ProductEnums;
 
 namespace api.DTOs.Product
@@ -27,6 +28,7 @@ namespace api.DTOs.Product
     {
         // Optional card-specific fields
         public bool IsFoil { get; set; } = false;
+        public FoilType FoilType { get; set; } = FoilType.NonFoil;
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }
@@ -37,6 +39,7 @@ namespace api.DTOs.Product
     public class UpdateCardDetailDto
     {
         public bool IsFoil { get; set; }
+        public FoilType? FoilType { get; set; }
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }
