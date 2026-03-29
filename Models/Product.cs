@@ -1,4 +1,5 @@
-﻿using CloudinaryDotNet;
+﻿using api.Models;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.ComponentModel.DataAnnotations;
 using static api.Enums.ProductEnums;
@@ -20,19 +21,10 @@ namespace CardShop.Models
         [Required]
         public int StockQuantity { get; set; }
         public string? ImageUrl { get; set; } // url for cloudinary image location
-        public string? CloudinaryId { get; set; } // for the cloudinary result public Id to located photos to delete
+        public string? CloudinaryId { get; set; } // for the cloudinary result public Id to locate photos to delete
 
-        // properites for singles cards
-        public bool IsFoil { get; set; } = false;  
-        
-        [Required]
-        public CardCondition? CardCondition { get; set; }
-        public CardRarity? CardRarity { get; set; }
-        public CardType? CardType { get; set; }
-        public string? CollectionNumber { get; set; }
-        public string? SetName { get; set; }
-        public bool? BestSeller { get; set; } = false;
-
+        // nav property for card details
+        public CardDetail? CardDetails { get; set; }
 
         // navigation properties for many to many relationships
         [ValidateNever]

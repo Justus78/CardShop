@@ -25,6 +25,7 @@ namespace CardShop.Data
         public DbSet<StoreCreditTransaction> StoreCreditTransactions { get; set; }
         public DbSet<TradeIn> TradeIns { get; set; }
         public DbSet<TradeInItem> TradeInItems { get; set; }
+        public DbSet<CardDetail> CardDetails { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -101,21 +102,21 @@ namespace CardShop.Data
                 .WithOne(t => t.User)
                 .HasForeignKey(t => t.UserId);
 
-            // One-to-one: User ↔ StoreCredit
+            // One-to-one: User - StoreCredit
             modelBuilder.Entity<ApplicationUser>()
                 .HasOne(u => u.StoreCredit)
                 .WithOne(sc => sc.User)
                 .HasForeignKey<StoreCredit>(sc => sc.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // One-to-many: StoreCredit ↔ Transactions
+            // One-to-many: StoreCredit - Transactions
             modelBuilder.Entity<StoreCredit>()
                 .HasMany(sc => sc.Transactions)
                 .WithOne(t => t.StoreCredit)
                 .HasForeignKey(t => t.StoreCreditId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // One-to-many: TradeIn ↔ Items
+            // One-to-many: TradeIn - Items
             modelBuilder.Entity<TradeIn>()
                 .HasMany(t => t.TradeInItems)
                 .WithOne(i => i.TradeIn)
@@ -133,11 +134,19 @@ namespace CardShop.Data
                 .WithOne(oi => oi.Product)
                 .HasForeignKey(oi => oi.ProductId);
 
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.CardDetails)
+                .WithOne(cd => cd.Product)
+                .HasForeignKey<CardDetail>(cd => cd.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Order relationships
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderItems)
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId);
+
+            
 
             // ---------------------------------------
             // Indexes & Constraints
