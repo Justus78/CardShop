@@ -20,6 +20,8 @@ namespace CardShop.Models
         public decimal Price { get; set; }
         [Required]
         public int StockQuantity { get; set; }
+        public bool? BestSeller { get; set; } = false;
+
         public string? ImageUrl { get; set; } // url for cloudinary image location
         public string? CloudinaryId { get; set; } // for the cloudinary result public Id to locate photos to delete
 
