@@ -75,7 +75,7 @@ namespace api.Repositories
 
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
-            return await _context.Products.ToListAsync();
+            return await _context.Products.Include(p => p.CardDetails).ToListAsync();
             //IQueryable<Product> query = _context.Products;
 
             ///* ---------- Filtering ---------- */
