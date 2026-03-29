@@ -1,5 +1,7 @@
-﻿using CardShop.Models;
-using api.DTOs.Product;
+﻿using api.DTOs.Product;
+using api.Models;
+using CardShop.Models;
+using static api.Enums.ProductEnums;
 
 
 namespace api.Mappers
@@ -8,21 +10,31 @@ namespace api.Mappers
     {
         public static Product ToProduct(this CreateProductDto dto)
         {
-            return new Product
+            var product = new Product
             {
                 Name = dto.Name,
                 Description = dto.Description,
                 Price = dto.Price,
                 StockQuantity = dto.StockQuantity,
                 ProductCategory = dto.ProductCategory,
-                IsFoil = dto.IsFoil,
-                CardCondition = dto.CardCondition,
-                CardRarity = dto.CardRarity,
-                CardType = dto.CardType,
-                CollectionNumber = dto.CollectionNumber,
-                SetName = dto.SetName,
                 BestSeller = dto.BestSeller,
             };
+
+            // Only create card detail if category is Card and CardDetail DTO is provided
+            if (dto.ProductCategory == ProductCategory.Card && dto.CardDetails != null)
+            {
+                product.CardDetails = new CardDetail
+                {
+                    IsFoil = dto.CardDetails.IsFoil,
+                    CardCondition = dto.CardDetails.CardCondition,
+                    CardRarity = dto.CardDetails.CardRarity,
+                    CardType = dto.CardDetails.CardType,
+                    CollectionNumber = dto.CardDetails.CollectionNumber,
+                    SetName = dto.CardDetails.SetName,
+                };
+            }
+
+            return product;
         }
     }
 }

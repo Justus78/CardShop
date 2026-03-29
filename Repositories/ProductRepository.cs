@@ -1,6 +1,7 @@
 ﻿using api.DTOs.Product;
 using api.Helpers;
 using api.Interfaces;
+using api.Models;
 using api.Services;
 using CardShop.Data;
 using CardShop.Models;
@@ -138,31 +139,35 @@ namespace api.Repositories
 
         public async Task<Product?> UpdateAsync(int id, UpdateProductDto dto)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products
+                .Include(p => p.CardDetails) // include card detail for update
+                .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (product == null)
-            { 
-                return null;
+            if (product == null) return null;
+
+            // Update basic fields
+            product.Price = dto.Price;
+            product.StockQuantity = dto.StockQuantity;
+            product.BestSeller = dto.BestSeller ?? product.BestSeller;
+
+            // Update card detail if it exists or create new if necessary
+            if (product.ProductCategory == ProductCategory.Card && dto.CardDetail != null)
+            {
+                if (product.CardDetails == null)
+                {
+                    product.CardDetails = new CardDetail();
+                }
+
+                product.CardDetails.IsFoil = dto.CardDetail.IsFoil;
+                product.CardDetails.CardCondition = dto.CardDetail.CardCondition;
+                product.CardDetails.CardRarity = dto.CardDetail.CardRarity;
+                product.CardDetails.CardType = dto.CardDetail.CardType;
+                product.CardDetails.CollectionNumber = dto.CardDetail.CollectionNumber;
+                product.CardDetails.SetName = dto.CardDetail.SetName;
             }
 
-            // check for new photo
-            //if (dto.ProductImage != null)
-            //{
-            //    if (product.CloudinaryId != null)
-            //    { // if there is already a pic
-            //        await _photoService.DeletePhotoAsync(product.CloudinaryId); // delete current photo
-            //    }
-            //    // send new photo to cloudinary
-            //    var result = await _photoService.AddPhotoAsync(dto.ProductImage);
-            //    product.ImageUrl = result.Url.ToString(); // add new url to players
-            //    product.CloudinaryId = result.PublicId.ToString();
-            //}            
-            product.Price = dto.Price;
-            product.StockQuantity = dto.StockQuantity;           
-
             await _context.SaveChangesAsync();
-
             return product;
-        } // end update
+        }
     } // end repo
 } // end namespace

@@ -19,12 +19,24 @@ namespace api.DTOs.Product
 
         [Required]
         public ProductCategory ProductCategory { get; set; }
+
+        public CardDetailsDto? CardDetails { get; set; }
     }
 
-    public class CardDetails 
+    public class CardDetailsDto
     {
         // Optional card-specific fields
         public bool IsFoil { get; set; } = false;
+        public CardCondition? CardCondition { get; set; }
+        public CardRarity? CardRarity { get; set; }
+        public CardType? CardType { get; set; }
+        public string? CollectionNumber { get; set; }
+        public string? SetName { get; set; }
+    }
+
+    public class UpdateCardDetailDto
+    {
+        public bool IsFoil { get; set; }
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }
@@ -36,9 +48,15 @@ namespace api.DTOs.Product
     {
         [Required]
         public decimal Price { get; set; }
+
         [Required]
         public int StockQuantity { get; set; }
 
-    }
+        public bool? BestSeller { get; set; }
 
+        // Optional card update
+        public UpdateCardDetailDto? CardDetail { get; set; }
+    }
 }
+
+
