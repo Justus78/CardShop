@@ -4,8 +4,8 @@
     {
         NonFoil,
         Regular,
-        Traditional,
-        Halo,
+        Textured,
+        Mana,
         Etched,
         Surge,
         Other
