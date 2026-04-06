@@ -5,6 +5,7 @@ namespace api.Models
     public class TradeIn
     {
         public int Id { get; set; }
+        public string TradeCode { get; set; } = string.Empty;
         public TradeInStatus Status { get; set; }
         public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }

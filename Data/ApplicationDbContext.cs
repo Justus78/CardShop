@@ -123,6 +123,11 @@ namespace CardShop.Data
                 .HasForeignKey(i => i.TradeInId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // add index for trade code
+            modelBuilder.Entity<TradeIn>()
+                .HasIndex(t => t.TradeCode)
+                .IsUnique();
+
             // Product relationships
             modelBuilder.Entity<Product>()
                 .HasMany(p => p.CartItems)

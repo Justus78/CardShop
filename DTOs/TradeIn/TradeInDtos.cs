@@ -45,6 +45,7 @@ namespace api.DTOs.TradeIn
     public class TradeInSummaryDto
     {
         public int Id { get; set; }
+        public string? TradeCode { get; set; }
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
@@ -71,6 +72,8 @@ namespace api.DTOs.TradeIn
     public class TradeInDetailDto
     {
         public int Id { get; set; }
+        public string? TradeCode { get; set; }
+
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
@@ -101,6 +104,7 @@ namespace api.DTOs.TradeIn
     public class TradeInDetailsDto
     {
         public int Id { get; set; }
+        public string? TradeCode { get; set; }
         public string UserEmail { get; set; } = string.Empty;
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }

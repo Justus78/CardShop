@@ -1,4 +1,5 @@
 ﻿using api.DTOs.TradeIn;
+using api.Helpers;
 using api.Interfaces;
 using api.Models;
 using CardShop.Data;
@@ -60,6 +61,7 @@ namespace api.Services
                 {
                     Id = t.Id,
                     Status = t.Status,
+                    TradeCode = t.TradeCode,
                     EstimatedValue = t.EstimatedValue,
                     FinalValue = t.FinalValue,
                     CreatedAt = t.CreatedAt,
@@ -146,6 +148,7 @@ namespace api.Services
                 draft = new TradeIn
                 {
                     UserId = userId,
+                    TradeCode = await GenerateUniqueTradeCodeAsync(),
                     Status = TradeInStatus.Draft,
                     CreatedAt = DateTime.Now,
                     TradeInItems = new List<TradeInItem>()
@@ -427,6 +430,7 @@ namespace api.Services
             return new TradeInDetailDto
             {
                 Id = tradeIn.Id,
+                TradeCode = tradeIn.TradeCode,
                 Status = tradeIn.Status,
                 EstimatedValue = tradeIn.EstimatedValue,
                 FinalValue = tradeIn.FinalValue,
@@ -454,6 +458,7 @@ namespace api.Services
             return new TradeInDetailsDto
             {
                 Id = tradeIn.Id,
+                TradeCode = tradeIn.TradeCode,
                 UserEmail = tradeIn.User?.Email ?? "",
                 Status = tradeIn.Status,
                 EstimatedValue = tradeIn.EstimatedValue,
@@ -461,7 +466,7 @@ namespace api.Services
                 CreatedAt = tradeIn.CreatedAt,
                 Items = tradeIn.TradeInItems.Select(i => new TradeInItemDto
                 {
-                    Id = i.Id,
+                    Id = i.Id,                    
                     CardName = i.CardName,
                     SetCode = i.SetCode,
                     Condition = i.Condition.ToString(),
@@ -473,6 +478,21 @@ namespace api.Services
                     FoilType = i.FoilType
                 }).ToList()
             };
+        } // end helper
+
+        public async Task<string> GenerateUniqueTradeCodeAsync()
+        {
+            string code;
+            bool exists;
+
+            do
+            {
+                code = TradeCodeGenerator.Generate();
+                exists = await _context.TradeIns.AnyAsync(t => t.TradeCode == code);
+            }
+            while (exists);
+
+            return code;
         }
 
     }
