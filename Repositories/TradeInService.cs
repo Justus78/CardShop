@@ -196,6 +196,7 @@ namespace api.Services
                 var item = new TradeInItem
                 {
                     CardName = dto.CardName,
+                    ScryfallId = dto.ScryfallId,
                     SetCode = dto.SetCode,
                     Quantity = dto.Quantity,
                     Condition = dto.Condition,
@@ -443,6 +444,7 @@ namespace api.Services
                 Items = tradeIn.TradeInItems.Select(i => new TradeInItemDto
                 {
                     Id = i.Id,
+                    ScryfallId = i.ScryfallId,
                     CardName = i.CardName,
                     SetCode = i.SetCode,
                     Condition = i.Condition.ToString(),
