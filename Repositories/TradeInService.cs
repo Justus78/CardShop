@@ -278,6 +278,7 @@ namespace api.Services
             var item = new TradeInItem
             {
                 CardName = dto.CardName,
+                ScryfallId = dto.ScryfallId,
                 SetCode = dto.SetCode,
                 Quantity = dto.Quantity,
                 Condition = dto.Condition,
@@ -293,6 +294,7 @@ namespace api.Services
             return new TradeInItemDto
             {
                 Id = item.Id,
+                ScryfallId = item.ScryfallId,
                 CardName = item.CardName,
                 SetCode = item.SetCode,
                 Condition = item.Condition.ToString(),
@@ -331,6 +333,8 @@ namespace api.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
+        // not currently used in trade in controller // !!!!!!!!
+        // !!!!!!!!!!! update for scryfall id if used later
         public async Task<TradeInItemDto?> UpdateItemAsync(string userId, int tradeInId, int itemId, TradeInItemCreateDto dto)
         {
             var item = await _context.TradeInItems

@@ -11,6 +11,7 @@ namespace api.DTOs.TradeIn
     public class TradeInItemCreateDto
     {
         public string CardName { get; set; } = string.Empty;
+        public string? ScryfallId { get; set; }
         public string SetCode { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public CardCondition Condition { get; set; } = CardCondition.NearMint;
