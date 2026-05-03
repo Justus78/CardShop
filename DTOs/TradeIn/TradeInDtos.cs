@@ -56,6 +56,7 @@ namespace api.DTOs.TradeIn
     public class TradeInItemDto
     {
         public int Id { get; set; }
+        public string? ScryfallId { get; set; }
         public string CardName { get; set; } = string.Empty;
         public string SetCode { get; set; } = string.Empty;
         public string Condition { get; set; } = string.Empty;

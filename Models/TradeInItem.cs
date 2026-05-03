@@ -5,6 +5,7 @@ namespace api.Models
     public class TradeInItem
     {
         public int Id { get; set; }
+        public string? ScryfallId { get; set; }
         public string? CardName { get; set;}
         public string? SetCode { get; set; }
         public int Quantity { get; set; }
