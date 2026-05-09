@@ -14,7 +14,7 @@ namespace api.DTOs.TradeIn
         public string? ScryfallId { get; set; }
         public string SetCode { get; set; } = string.Empty;
         public int Quantity { get; set; }
-        public CardCondition Condition { get; set; } = CardCondition.NearMint;
+        public CardCondition Condition { get; set; }
         public decimal? EstimatedPrice { get; set; } // per unit from Scryfall
         public string? ImageUrl { get; set; }
         public bool IsFoil { get; set; } = false;

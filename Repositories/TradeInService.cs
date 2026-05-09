@@ -176,11 +176,11 @@ namespace api.Services
                     TradeInItems = new List<TradeInItem>()
                 };
             }
+            
 
-            //  Check if identical card already exists
+            // validation for existing item
             var existingItem = draft.TradeInItems.FirstOrDefault(i =>
-                i.CardName == dto.CardName &&
-                i.SetCode == dto.SetCode &&
+                i.ScryfallId == dto.ScryfallId &&
                 i.Condition == dto.Condition &&
                 i.ArtStyle == dto.CardStyle &&
                 i.FoilType == dto.FoilType
