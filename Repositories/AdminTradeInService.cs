@@ -64,6 +64,7 @@ namespace api.Repositories
                 Items = tradeIn.TradeInItems.Select(i => new TradeInItemDto
                 {
                     Id = i.Id,
+                    ScryfallId = i.ScryfallId,
                     CardName = i.CardName!,
                     SetCode = i.SetCode!,
                     Condition = i.Condition.ToString(),

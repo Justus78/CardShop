@@ -59,7 +59,7 @@ namespace api.Services
                 .Include(t => t.TradeInItems)
                 .Select(t => new TradeInSummaryDto
                 {
-                    Id = t.Id,
+                    Id = t.Id,                    
                     Status = t.Status,
                     TradeCode = t.TradeCode,
                     EstimatedValue = t.EstimatedValue,
