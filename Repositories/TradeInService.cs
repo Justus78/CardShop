@@ -69,11 +69,11 @@ namespace api.Services
                 }).ToListAsync();
         }
 
-        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(int tradeInId)
+        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId)
         {
             var tradeIn = await _context.TradeIns
                 .Include(t => t.TradeInItems)
-                .FirstOrDefaultAsync(t => t.Id == tradeInId);
+                .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
 
             if (tradeIn == null) return null;
 
@@ -219,7 +219,10 @@ namespace api.Services
         {
             var item = await _context.TradeInItems
                 .Include(i => i.TradeIn)
-                .FirstOrDefaultAsync(i => i.Id == itemId && i.TradeIn.UserId == userId && i.TradeIn.Status == TradeInStatus.Draft);
+                .FirstOrDefaultAsync(
+                    i => i.Id == itemId && 
+                    i.TradeIn.UserId == userId && 
+                    i.TradeIn.Status == TradeInStatus.Draft);
 
             if (item == null) return false;
 
@@ -237,7 +240,7 @@ namespace api.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<TradeInDto?> SubmitDraftAsync(int tradeinId)
+        public async Task<TradeInDto?> SubmitDraftAsync(string userId, int tradeinId)
         {
             // get the draft trade in correctly and efficiently
             //
@@ -247,7 +250,7 @@ namespace api.Services
 
             var draft = await _context.TradeIns
                 .Include(t => t.TradeInItems)
-                .FirstOrDefaultAsync(tr => tr.Id == tradeinId);
+                .FirstOrDefaultAsync(tr => tr.Id == tradeinId && userId == tr.UserId);
 
             if (draft == null) return null;
 
@@ -319,6 +322,7 @@ namespace api.Services
         }
         public async Task<bool> UpdateDraftItemQuantityAsync(string userId, int itemId, int quantity)
         {
+            // only finds item if belongs to the user and has draft status
             var item = await _context.TradeInItems
                 .Include(i => i.TradeIn)
                 .FirstOrDefaultAsync(i =>
@@ -435,6 +439,7 @@ namespace api.Services
             return new TradeInDetailDto
             {
                 Id = tradeIn.Id,
+                UserId = tradeIn.UserId,
                 TradeCode = tradeIn.TradeCode,
                 Status = tradeIn.Status,
                 EstimatedValue = tradeIn.EstimatedValue,

@@ -18,6 +18,7 @@ namespace api.Controllers
             _tradeInService = tradeInService;
         }
 
+        // get user id from the token claims
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
         // ----------------------------
@@ -60,8 +61,8 @@ namespace api.Controllers
         [HttpPost("draft/submit/{tradeInId:int}")]
         public async Task<IActionResult> SubmitDraftTradeIn(int tradeInId)
         {
-            //var userId = GetUserId();
-            var result = await _tradeInService.SubmitDraftAsync(tradeInId);
+            var userId = GetUserId();
+            var result = await _tradeInService.SubmitDraftAsync(userId, tradeInId);
             return result == null ? BadRequest("Draft submission failed.") : Ok(result);
         }
 
@@ -70,14 +71,9 @@ namespace api.Controllers
         public async Task<IActionResult> DeleteTradeIn(int tradeInId)
         {
             var userId = GetUserId();
-            var draftTradeIn = await _tradeInService.GetTradeInByIdAsync(tradeInId);
+            var result = await _tradeInService.CancelTradeInAsync(userId, tradeInId);
 
-            if (draftTradeIn == null)
-                return NotFound();
-
-            var result = await _tradeInService.CancelTradeInAsync(userId, draftTradeIn.Id);
-
-            return Ok(result);
+            return result ? NoContent() : NotFound();
         }
 
         // ----------------------------
@@ -96,8 +92,16 @@ namespace api.Controllers
         public async Task<IActionResult> GetTradeInById(int tradeInId)
         {
             var userId = GetUserId();
-            var tradeIn = await _tradeInService.GetTradeInByIdAsync(tradeInId);
-            return tradeIn == null ? NotFound("Trade-in not found.") : Ok(tradeIn);
+
+            var tradeIn = await _tradeInService.GetTradeInByIdAsync(userId, tradeInId);
+
+            // validate trade in
+            if (tradeIn == null)
+            {
+                return NotFound("Trade In not found.");
+            }
+
+            return Ok(tradeIn);
         }
 
         [HttpPatch("{tradeInId:int}")]
@@ -114,7 +118,7 @@ namespace api.Controllers
             var userId = GetUserId();
             var success = await _tradeInService.ConfirmFinalOfferAsync(userId, tradeInId);
             return success ? Ok(new {message = "Offer accepted successfully."}) : 
-                BadRequest( new {message = "Offer declined successfully."});
+                BadRequest( new {message = "Failed to accept offer."});
         }
 
         [HttpPost("{tradeInId:int}/decline-offer")]
@@ -122,8 +126,8 @@ namespace api.Controllers
         {
             var userId = GetUserId();
             var success = await _tradeInService.DeclineFinalOfferAsync(userId, tradeInId);
-            return success ? Ok(new { message = "Offer accepted successfully." }) :
-                BadRequest(new { message = "Offer declined successfully." });
+            return success ? Ok(new { message = "Offer declined successfully." }) :
+                BadRequest(new { message = "Failed to decline offer." });
         }
 
         [HttpPost("estimate")]

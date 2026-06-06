@@ -13,7 +13,7 @@ namespace api.Interfaces
 
         Task<TradeInDto?> SubmitTradeInAsync(string userId, TradeInCreateDto dto);
         Task<IEnumerable<TradeInSummaryDto>> GetUserTradeInsAsync(string userId);
-        Task<TradeInDetailDto?> GetTradeInByIdAsync(int tradeInId);
+        Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId);
         Task<bool> ReturnTradeInAsync(string userId, int tradeInId);
         Task<bool> ConfirmFinalOfferAsync(string userId, int tradeInId);
         Task<bool> DeclineFinalOfferAsync(string userId, int tradeInId);
@@ -28,7 +28,7 @@ namespace api.Interfaces
         Task<bool> RemoveItemFromDraftAsync(string userId, int itemId);
         Task<bool> UpdateDraftItemQuantityAsync(string userId, int itemId, int quantity);
         Task<bool> CancelTradeInAsync(string userId, int tradeIn);
-        Task<TradeInDto?> SubmitDraftAsync(int tradeInId);
+        Task<TradeInDto?> SubmitDraftAsync(string userId, int tradeInId);
 
         // ──────────────────────────────────────────────
         // USER: Item management (for submitted trade-ins)

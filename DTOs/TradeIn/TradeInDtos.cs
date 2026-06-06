@@ -74,6 +74,7 @@ namespace api.DTOs.TradeIn
     public class TradeInDetailDto
     {
         public int Id { get; set; }
+        public string UserId { get; set; }
         public string? TradeCode { get; set; }
 
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
