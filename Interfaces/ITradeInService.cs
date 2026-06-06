@@ -18,6 +18,7 @@ namespace api.Interfaces
         Task<bool> ConfirmFinalOfferAsync(string userId, int tradeInId);
         Task<bool> DeclineFinalOfferAsync(string userId, int tradeInId);
         Task<decimal> GetEstimatedTradeValueAsync(List<TradeInItemCreateDto> items);
+        Task<bool> UpdateTradeStatusUser(string userId, int tradeInId);
 
         // ──────────────────────────────────────────────
         // USER: Draft / Persistent trade-ins

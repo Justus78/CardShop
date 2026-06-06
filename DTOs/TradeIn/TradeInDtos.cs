@@ -123,6 +123,13 @@ namespace api.DTOs.TradeIn
         // Optional admin note (why status changed)
         public string? AdminNote { get; set; }
     }
+    
+    public class UpdateTradeInStatusUserDto
+    {
+        public TradeInStatus Status { get; set; }   
+        public int TradeInId { get; set; }
+        public string? UserId { get; set; }
+    }
 
     public class UpdateTradeInItemValueDto
     {

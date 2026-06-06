@@ -3,6 +3,7 @@ using api.Helpers;
 using api.Interfaces;
 using api.Models;
 using CardShop.Data;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using static api.Enums.ProductEnums;
 
@@ -131,6 +132,25 @@ namespace api.Services
                 total += item.Quantity * price;
             }
             return total;
+        }
+
+        public async Task<bool> UpdateTradeStatusUser(string userId, int tradeInId)
+        {
+            var trade = await _context.TradeIns
+                .FirstOrDefaultAsync(tr => tr.UserId == userId && tr.Id == tradeInId);
+
+            if (trade == null)
+                return false;
+
+            // Only allow Submitted -> Shipped
+            if (trade.Status != TradeInStatus.Submitted)
+                return false;
+
+            trade.Status = TradeInStatus.Shipped;
+            trade.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         // =====================================================================

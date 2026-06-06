@@ -1,5 +1,6 @@
 ﻿using api.DTOs.TradeIn;
 using api.Interfaces;
+using api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -65,6 +66,17 @@ namespace api.Controllers
             var result = await _tradeInService.SubmitDraftAsync(userId, tradeInId);
             return result == null ? BadRequest("Draft submission failed.") : Ok(result);
         }
+
+        [HttpPatch("draft/updateStatusUser/{tradeInId:int}")]
+        public async Task<IActionResult> UpdateTradeStatusUser(int tradeInId)
+        {
+            var userId = GetUserId();
+          
+            var result = await _tradeInService.UpdateTradeStatusUser(userId, tradeInId);
+
+            return result == true ? NoContent() : BadRequest();
+        }
+
 
         [HttpDelete("draft/deleteDraft/{tradeInId:int}")]
         
