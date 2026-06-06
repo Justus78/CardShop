@@ -1,5 +1,6 @@
 ﻿using api.Services;
 using CardShop.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 

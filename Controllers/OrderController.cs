@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using System.Security.Claims;
 
 namespace api.Controllers
 {
@@ -24,10 +25,12 @@ namespace api.Controllers
             _config = config;
         }
 
+        private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
         [HttpPost("create-intent")]
         public async Task<IActionResult> CreatePaymentIntent([FromBody] CreateOrderDto dto)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = GetUserId();
             if (user == null) return Unauthorized();
 
             StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
@@ -72,7 +75,7 @@ namespace api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetOrders()
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = GetUserId();
             if (user == null) return Unauthorized();
 
             var orders = await _orderService.GetOrdersForUserAsync(user.Id);
@@ -82,7 +85,7 @@ namespace api.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = GetUserId();
             if (user == null) return Unauthorized();
 
             var order = await _orderService.GetOrderByIdAsync(id, user.Id);

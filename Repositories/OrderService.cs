@@ -130,7 +130,7 @@ namespace CardShop.Services
         {
             var orders = await _context.Orders
                 .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
+                .ThenInclude(oi => oi.Product)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.CreatedDate)
                 .ToListAsync();
@@ -142,7 +142,7 @@ namespace CardShop.Services
         {
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
+                 .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
 
             return order == null ? null : MapToDto(order);
