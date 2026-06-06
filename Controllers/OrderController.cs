@@ -30,8 +30,8 @@ namespace api.Controllers
         [HttpPost("create-intent")]
         public async Task<IActionResult> CreatePaymentIntent([FromBody] CreateOrderDto dto)
         {
-            var user = GetUserId();
-            if (user == null) return Unauthorized();
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
             StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
 
@@ -62,7 +62,7 @@ namespace api.Controllers
 
             // Create pending order
             dto.PaymentIntentId = paymentIntent.Id;  // add payment intent to the dto
-            var order = await _orderService.CreateOrderAsync(dto, user.Id); // create the order
+            var order = await _orderService.CreateOrderAsync(dto, userId); // create the order
 
             return Ok(new
             {
@@ -75,20 +75,20 @@ namespace api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetOrders()
         {
-            var user = GetUserId();
-            if (user == null) return Unauthorized();
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var orders = await _orderService.GetOrdersForUserAsync(user.Id);
+            var orders = await _orderService.GetOrdersForUserAsync(userId);
             return Ok(orders);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
-            var user = GetUserId();
-            if (user == null) return Unauthorized();
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var order = await _orderService.GetOrderByIdAsync(id, user.Id);
+            var order = await _orderService.GetOrderByIdAsync(id, userId);
             if (order == null) return NotFound();
             return Ok(order);
         }

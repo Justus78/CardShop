@@ -9,5 +9,5 @@ public interface ICartService
     Task<CartItemDto?> AddAsync(string userId, AddCartItemDto dto);
     Task<CartItemDto?> UpdateAsync(string userId, UpdateCartItemDto dto);
     Task<bool> RemoveAsync(string userId, int cartItemId);
-    Task ClearAsync(string userId);
+    Task<bool> ClearAsync(string userId);
 }
