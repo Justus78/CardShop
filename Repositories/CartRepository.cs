@@ -80,10 +80,10 @@ public class CartService : ICartService
         return true;
     }
 
-    public async Task ClearAsync(string userId)
+    public async Task<bool> ClearAsync(string userId)
     {
         var items = _context.CartItems.Where(ci => ci.UserId == userId);
         _context.CartItems.RemoveRange(items);
-        await _context.SaveChangesAsync();
+        return await _context.SaveChangesAsync() > 0;
     }
 }

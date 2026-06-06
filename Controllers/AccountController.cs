@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text;
 
-namespace CardShop.Controllers
+namespace api.Controllers
 {
     [Route("api/account")]
     public class AccountController : ControllerBase
