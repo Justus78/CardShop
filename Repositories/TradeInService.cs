@@ -70,11 +70,22 @@ namespace api.Services
                 }).ToListAsync();
         }
 
-        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId)
+        public async Task<TradeInDetailDto?> GetTradeInByCodeAsync(string userId, int tradeInId)
         {
             var tradeIn = await _context.TradeIns
                 .Include(t => t.TradeInItems)
                 .FirstOrDefaultAsync(t => t.Id == tradeInId && t.UserId == userId);
+
+            if (tradeIn == null) return null;
+
+            return MapToTradeInDetailDto(tradeIn);
+        }
+
+        public async Task<TradeInDetailDto?> GetTradeByCodeAsync(string userId, string tradeCode)
+        {
+            var tradeIn = await _context.TradeIns
+                .Include(t => t.TradeInItems)
+                .FirstOrDefaultAsync(t => t.TradeCode == tradeCode && t.UserId == userId);
 
             if (tradeIn == null) return null;
 

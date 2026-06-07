@@ -71,7 +71,7 @@ namespace api.Controllers
         public async Task<IActionResult> UpdateTradeStatusUser(int tradeInId)
         {
             var userId = GetUserId();
-          
+
             var result = await _tradeInService.UpdateTradeStatusUser(userId, tradeInId);
 
             return result == true ? NoContent() : BadRequest();
@@ -79,7 +79,7 @@ namespace api.Controllers
 
 
         [HttpDelete("draft/deleteDraft/{tradeInId:int}")]
-        
+
         public async Task<IActionResult> DeleteTradeIn(int tradeInId)
         {
             var userId = GetUserId();
@@ -105,7 +105,23 @@ namespace api.Controllers
         {
             var userId = GetUserId();
 
-            var tradeIn = await _tradeInService.GetTradeInByIdAsync(userId, tradeInId);
+            var tradeIn = await _tradeInService.GetTradeInByCodeAsync(userId, tradeInId);
+
+            // validate trade in
+            if (tradeIn == null)
+            {
+                return NotFound("Trade In not found.");
+            }
+
+            return Ok(tradeIn);
+        }
+
+        [HttpGet("tradeCode/{tradeCode:string}")]
+        public async Task<IActionResult> GetTradeInByCode(string tradeCode)
+        {
+            var userId = GetUserId();
+
+            var tradeIn = await _tradeInService.GetTradeByCodeAsync(userId, tradeCode);
 
             // validate trade in
             if (tradeIn == null)

@@ -13,7 +13,9 @@ namespace api.Interfaces
 
         Task<TradeInDto?> SubmitTradeInAsync(string userId, TradeInCreateDto dto);
         Task<IEnumerable<TradeInSummaryDto>> GetUserTradeInsAsync(string userId);
-        Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId);
+        Task<TradeInDetailDto?> GetTradeInByCodeAsync(string userId, int tradeInId);
+        Task<TradeInDetailDto?> GetTradeByCodeAsync(string userId, string tradeInId);
+
         Task<bool> ReturnTradeInAsync(string userId, int tradeInId);
         Task<bool> ConfirmFinalOfferAsync(string userId, int tradeInId);
         Task<bool> DeclineFinalOfferAsync(string userId, int tradeInId);
