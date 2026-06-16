@@ -70,7 +70,7 @@ namespace api.Services
                 }).ToListAsync();
         }
 
-        public async Task<TradeInDetailDto?> GetTradeInByCodeAsync(string userId, int tradeInId)
+        public async Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId)
         {
             var tradeIn = await _context.TradeIns
                 .Include(t => t.TradeInItems)

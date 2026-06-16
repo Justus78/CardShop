@@ -105,7 +105,7 @@ namespace api.Controllers
         {
             var userId = GetUserId();
 
-            var tradeIn = await _tradeInService.GetTradeInByCodeAsync(userId, tradeInId);
+            var tradeIn = await _tradeInService.GetTradeInByIdAsync(userId, tradeInId);
 
             // validate trade in
             if (tradeIn == null)
@@ -116,7 +116,7 @@ namespace api.Controllers
             return Ok(tradeIn);
         }
 
-        [HttpGet("tradeCode/{tradeCode:string}")]
+        [HttpGet("tradeCode/{tradeCode}")]
         public async Task<IActionResult> GetTradeInByCode(string tradeCode)
         {
             var userId = GetUserId();

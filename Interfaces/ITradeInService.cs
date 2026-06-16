@@ -13,7 +13,7 @@ namespace api.Interfaces
 
         Task<TradeInDto?> SubmitTradeInAsync(string userId, TradeInCreateDto dto);
         Task<IEnumerable<TradeInSummaryDto>> GetUserTradeInsAsync(string userId);
-        Task<TradeInDetailDto?> GetTradeInByCodeAsync(string userId, int tradeInId);
+        Task<TradeInDetailDto?> GetTradeInByIdAsync(string userId, int tradeInId);
         Task<TradeInDetailDto?> GetTradeByCodeAsync(string userId, string tradeInId);
 
         Task<bool> ReturnTradeInAsync(string userId, int tradeInId);
