@@ -45,20 +45,29 @@ namespace api.Controllers
 
             if (user == null)
             {
-                return Unauthorized("Invalid username!");
+                return Unauthorized(new LoginErrorDto
+                {
+                    Error = "Invalid Username or Password."
+                });
             }
 
             // verify the user has confirmed their email
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
-                return Unauthorized("Please verify your email before logging in.");
+                return Unauthorized(new LoginErrorDto
+                {
+                    Error = "Please verify your email before logging in."
+                });
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
             if (!result.Succeeded)
             {
-                return Unauthorized("Username not found and/or password incorrect");
+                return Unauthorized(new LoginErrorDto
+                {
+                    Error = "Invalid Username or Password."
+                });
             }
 
             var token = await _tokenService.CreateToken(user);
@@ -144,8 +153,8 @@ namespace api.Controllers
                 return Ok(new
                 {
                     Message = "Registration successful! Please check your email to verify your account.",
-                    UserName = appUser.UserName,
-                    Email = appUser.Email
+                    appUser.UserName,
+                    appUser.Email
                 });
             }
             catch (Exception e)
