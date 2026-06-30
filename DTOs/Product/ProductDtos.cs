@@ -28,7 +28,7 @@ namespace api.DTOs.Product
     {
         // Optional card-specific fields
         public bool IsFoil { get; set; } = false;
-        public FoilType FoilType { get; set; } = FoilType.NonFoil;
+        public FoilType? FoilType { get; set; } = null;
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }
         public CardType? CardType { get; set; }

@@ -19,7 +19,7 @@ namespace api.DTOs.TradeIn
         public string? ImageUrl { get; set; }
         public bool IsFoil { get; set; } = false;
         public CardStyle CardStyle { get; set; } = CardStyle.Regular;
-        public FoilType FoilType { get; set; } = FoilType.NonFoil;
+        public FoilType? FoilType { get; set; } = null;
     }
 
     // Update item in existing trade-in

@@ -10,7 +10,7 @@ namespace api.Models
         // properites for singles cards
         public int Id { get; set; }
         public bool IsFoil { get; set; } = false;
-        public FoilType FoilType { get; set; } = FoilType.NonFoil;
+        public FoilType? FoilType { get; set; } = null;
 
         public CardCondition? CardCondition { get; set; }
         public CardRarity? CardRarity { get; set; }

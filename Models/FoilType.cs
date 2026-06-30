@@ -2,7 +2,6 @@
 {
     public enum FoilType
     {
-        NonFoil,
         Regular,
         Textured,
         Mana,
