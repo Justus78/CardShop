@@ -12,5 +12,6 @@ namespace api.Interfaces
         Task<bool> SubmitFinalOfferAsync(int tradeInId);
         Task<bool> CreditUserAccountAsync(int tradeInId);
         Task<bool> ReturnCardsToUserAsync(int tradeInId);
+        Task<bool> UpdateTradeInStatusAsync(UpdateTradeInStatusDto dto);
     }
 }

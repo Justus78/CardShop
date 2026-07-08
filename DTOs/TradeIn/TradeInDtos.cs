@@ -1,4 +1,5 @@
 ﻿using api.Models;
+using System.ComponentModel.DataAnnotations;
 using static api.Enums.ProductEnums;
 
 namespace api.DTOs.TradeIn
@@ -119,6 +120,8 @@ namespace api.DTOs.TradeIn
 
     public class UpdateTradeInStatusDto
     {
+        [Required]
+        public int Id { get; set; }
         // New status to set for the trade-in
         public TradeInStatus Status { get; set; }
         // Optional admin note (why status changed)

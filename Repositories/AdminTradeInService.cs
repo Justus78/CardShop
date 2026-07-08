@@ -213,5 +213,19 @@ namespace api.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<bool> UpdateTradeInStatusAsync(UpdateTradeInStatusDto dto)
+        {
+            var tradeIn = await _context.TradeIns.FirstOrDefaultAsync(t => t.Id == dto.Id);
+
+            if (tradeIn == null) return false;
+
+            tradeIn.Status = dto.Status;
+            tradeIn.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return true;
+
+        }
     }
 }
