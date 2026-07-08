@@ -100,6 +100,7 @@ namespace api.DTOs.TradeIn
         public TradeInStatus Status { get; set; } = TradeInStatus.Submitted;
         public decimal? EstimatedValue { get; set; }
         public decimal? FinalValue { get; set; }
+        public string? TradeCode { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<TradeInItem> Items { get; set; } = [];
     }

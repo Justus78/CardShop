@@ -38,6 +38,7 @@ namespace api.Repositories
                     EstimatedValue = t.EstimatedValue,
                     FinalValue = t.FinalValue,
                     CreatedAt = t.CreatedAt,
+                    TradeCode = t.TradeCode,
                     Items = t.TradeInItems.ToList(),
                     
                 })
@@ -61,6 +62,7 @@ namespace api.Repositories
                 EstimatedValue = tradeIn.EstimatedValue,
                 FinalValue = tradeIn.FinalValue,
                 CreatedAt = tradeIn.CreatedAt,
+                TradeCode = tradeIn.TradeCode,
                 Items = tradeIn.TradeInItems.Select(i => new TradeInItemDto
                 {
                     Id = i.Id,
