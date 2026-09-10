@@ -133,7 +133,8 @@ StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 // configuration for services
 builder.Services.AddScoped<ITokenService, api.Services.TokenService>();
-builder.Services.AddScoped<IProductService, ProductRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, api.Services.ProductService>(); 
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IOrderService, OrderService>();

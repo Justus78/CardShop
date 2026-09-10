@@ -4,13 +4,13 @@ using CardShop.Models;
 
 namespace api.Interfaces
 {
-    public interface IProductService
+    public interface IProductRepository
     {
         Task<PagedResult<Product>> GetAllAsync(ProductQueryObject queryObject);
         Task<Product?> GetByIdAsync(int id);
-        Task<Product> CreateAsync(CreateProductDto dto);
-        Task<Product?> UpdateAsync(int id, UpdateProductDto dto);
+        Task<Product> AddAsync(Product product);
         Task<Product?> DeleteAsync(int id);
         Task<int> CountAsync();
+        Task<bool> SaveChangesAsync();
     }
 }

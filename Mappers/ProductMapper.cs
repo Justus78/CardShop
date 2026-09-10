@@ -20,7 +20,6 @@ namespace api.Mappers
                 BestSeller = dto.BestSeller,
             };
 
-            // Only create card detail if category is Card and CardDetail DTO is provided
             if (dto.ProductCategory == ProductCategory.Card && dto.CardDetails != null)
             {
                 product.CardDetails = new CardDetail
@@ -32,6 +31,26 @@ namespace api.Mappers
                     CardType = dto.CardDetails.CardType,
                     CollectionNumber = dto.CardDetails.CollectionNumber,
                     SetName = dto.CardDetails.SetName,
+                };
+            }
+
+            if (dto.ProductCategory == ProductCategory.Sealed && dto.SealedProductDetails != null)
+            {
+                product.SealedProductDetails = new SealedProductDetail
+                {
+                    SetName = dto.SealedProductDetails.SetName,
+                    SealedProductType = dto.SealedProductDetails.SealedProductType,
+                    Language = dto.SealedProductDetails.Language,
+                };
+            }
+
+            if (dto.ProductCategory == ProductCategory.Accessory && dto.AccessoryDetails != null)
+            {
+                product.AccessoryDetails = new AccessoryDetail
+                {
+                    Brand = dto.AccessoryDetails.Brand,
+                    AccessoryCategory = dto.AccessoryDetails.AccessoryCategory,
+                    Dimensions = dto.AccessoryDetails.Dimensions,
                 };
             }
 

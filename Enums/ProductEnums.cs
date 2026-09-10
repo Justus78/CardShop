@@ -7,7 +7,7 @@
             Card,
             Sealed,
             Accessory,
-            Bundle
+            Bundle,            
         }
 
         public enum CardRarity
