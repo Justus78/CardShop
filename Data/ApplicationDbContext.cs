@@ -99,6 +99,8 @@ namespace CardShop.Data
                 .WithOne(o => o.User)
                 .HasForeignKey(o => o.UserId);
 
+
+
             //modelBuilder.Entity<ApplicationUser>()
             //    .HasMany(u => u.TradeIns)
             //    .WithOne(t => t.User)
@@ -130,6 +132,7 @@ namespace CardShop.Data
             //    .HasIndex(t => t.TradeCode)
             //    .IsUnique();
 
+
             // Product relationships
             modelBuilder.Entity<Product>()
                 .HasMany(p => p.CartItems)
@@ -146,6 +149,19 @@ namespace CardShop.Data
                 .WithOne(cd => cd.Product)
                 .HasForeignKey<CardDetail>(cd => cd.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.SealedProductDetails)
+                .WithOne(sd => sd.Product)
+                .HasForeignKey<SealedProductDetail>(sd => sd.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.AccessoryDetails)
+                .WithOne(ad => ad.Product)
+                .HasForeignKey<AccessoryDetail>(ad => ad.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
 
             // Order relationships
             modelBuilder.Entity<Order>()

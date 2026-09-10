@@ -21,12 +21,15 @@ namespace CardShop.Models
         [Required]
         public int StockQuantity { get; set; }
         public bool? BestSeller { get; set; } = false;
-
         public string? ImageUrl { get; set; } // url for cloudinary image location
         public string? CloudinaryId { get; set; } // for the cloudinary result public Id to locate photos to delete
 
-        // nav property for card details
+
+        // nav properties for different product variants
         public CardDetail? CardDetails { get; set; }
+        public SealedProductDetail? SealedProductDetails { get; set; }
+        public AccessoryDetail? AccessoryDetails { get; set; }
+
 
         // navigation properties for many to many relationships
         [ValidateNever]

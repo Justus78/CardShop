@@ -38,5 +38,28 @@
             Planeswalker,
             Land
         }
+
+        public enum SealedProductType
+        {
+            BoosterBox,
+            BoosterPack,
+            EliteTrainerBox,
+            Bundle,
+            CollectionBox,
+            PreconstructedDeck,
+            Tin,
+            Other
+        }
+
+        public enum AccessoryCategory
+        {
+            Sleeves,
+            DeckBox,
+            Binder,
+            Playmat,
+            ToploaderOrCardSaver,
+            StorageBox,
+            Other
+        }
     }
 }
