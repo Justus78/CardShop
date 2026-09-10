@@ -1,6 +1,5 @@
 ﻿using api.DTOs.Account;
 using api.DTOs.Order;
-using api.DTOs.TradeIn;
 using api.Interfaces;
 using CardShop.Models;
 using Microsoft.AspNetCore.Authorization;

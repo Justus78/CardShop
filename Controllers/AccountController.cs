@@ -190,7 +190,6 @@ namespace api.Controllers
                 user.Id,
                 user.UserName,
                 user.Email,
-                user.StoreCredit,
                 roles
             });
         }

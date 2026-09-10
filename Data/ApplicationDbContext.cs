@@ -21,10 +21,12 @@ namespace CardShop.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Set> Sets { get; set; }
-        public DbSet<StoreCredit> StoreCredits { get; set; }
-        public DbSet<StoreCreditTransaction> StoreCreditTransactions { get; set; }
-        public DbSet<TradeIn> TradeIns { get; set; }
-        public DbSet<TradeInItem> TradeInItems { get; set; }
+
+        //public DbSet<StoreCredit> StoreCredits { get; set; }
+        //public DbSet<StoreCreditTransaction> StoreCreditTransactions { get; set; }
+        //public DbSet<TradeIn> TradeIns { get; set; }
+        //public DbSet<TradeInItem> TradeInItems { get; set; }
+
         public DbSet<CardDetail> CardDetails { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -97,36 +99,36 @@ namespace CardShop.Data
                 .WithOne(o => o.User)
                 .HasForeignKey(o => o.UserId);
 
-            modelBuilder.Entity<ApplicationUser>()
-                .HasMany(u => u.TradeIns)
-                .WithOne(t => t.User)
-                .HasForeignKey(t => t.UserId);
+            //modelBuilder.Entity<ApplicationUser>()
+            //    .HasMany(u => u.TradeIns)
+            //    .WithOne(t => t.User)
+            //    .HasForeignKey(t => t.UserId);
 
             // One-to-one: User - StoreCredit
-            modelBuilder.Entity<ApplicationUser>()
-                .HasOne(u => u.StoreCredit)
-                .WithOne(sc => sc.User)
-                .HasForeignKey<StoreCredit>(sc => sc.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            //modelBuilder.Entity<ApplicationUser>()
+            //    .HasOne(u => u.StoreCredit)
+            //    .WithOne(sc => sc.User)
+            //    .HasForeignKey<StoreCredit>(sc => sc.UserId)
+            //    .OnDelete(DeleteBehavior.Cascade);
 
-            // One-to-many: StoreCredit - Transactions
-            modelBuilder.Entity<StoreCredit>()
-                .HasMany(sc => sc.Transactions)
-                .WithOne(t => t.StoreCredit)
-                .HasForeignKey(t => t.StoreCreditId)
-                .OnDelete(DeleteBehavior.Cascade);
+            //// One-to-many: StoreCredit - Transactions
+            //modelBuilder.Entity<StoreCredit>()
+            //    .HasMany(sc => sc.Transactions)
+            //    .WithOne(t => t.StoreCredit)
+            //    .HasForeignKey(t => t.StoreCreditId)
+            //    .OnDelete(DeleteBehavior.Cascade);
 
             // One-to-many: TradeIn - Items
-            modelBuilder.Entity<TradeIn>()
-                .HasMany(t => t.TradeInItems)
-                .WithOne(i => i.TradeIn)
-                .HasForeignKey(i => i.TradeInId)
-                .OnDelete(DeleteBehavior.Cascade);
+            //modelBuilder.Entity<TradeIn>()
+            //    .HasMany(t => t.TradeInItems)
+            //    .WithOne(i => i.TradeIn)
+            //    .HasForeignKey(i => i.TradeInId)
+            //    .OnDelete(DeleteBehavior.Cascade);
 
-            // add index for trade code
-            modelBuilder.Entity<TradeIn>()
-                .HasIndex(t => t.TradeCode)
-                .IsUnique();
+            //// add index for trade code
+            //modelBuilder.Entity<TradeIn>()
+            //    .HasIndex(t => t.TradeCode)
+            //    .IsUnique();
 
             // Product relationships
             modelBuilder.Entity<Product>()
@@ -171,17 +173,17 @@ namespace CardShop.Data
                 .Property(p => p.Price)
                 .HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<TradeInItem>()
-                .Property(ti => ti.EstimatedUnitValue)
-                .HasColumnType("decimal(18,2)");
+            //modelBuilder.Entity<TradeInItem>()
+            //    .Property(ti => ti.EstimatedUnitValue)
+            //    .HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<StoreCredit>()
-                .Property(sc => sc.CurrentBalance)
-                .HasColumnType("decimal(18,2)");
+            //modelBuilder.Entity<StoreCredit>()
+            //    .Property(sc => sc.CurrentBalance)
+            //    .HasColumnType("decimal(18,2)");
 
-            modelBuilder.Entity<StoreCreditTransaction>()
-                .Property(t => t.ChangeAmount)
-                .HasColumnType("decimal(18,2)");
+            //modelBuilder.Entity<StoreCreditTransaction>()
+            //    .Property(t => t.ChangeAmount)
+            //    .HasColumnType("decimal(18,2)");
         }
     }
 }
