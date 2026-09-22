@@ -1,78 +1,37 @@
 ﻿using api.DTOs.Account;
 using api.Interfaces;
-using api.Services;
-using CardShop.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.Text;
 
 namespace api.Controllers
 {
     [Route("api/account")]
     public class AccountController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ITokenService _tokenService;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IEmailService _emailService;
         private readonly IUserAccountService _userAccountService;
-        private readonly IConfiguration _config;
 
-        public AccountController(UserManager<ApplicationUser> userManager, ITokenService tokenService,
-            SignInManager<ApplicationUser> signInManager, IEmailService emailService, 
-            IUserAccountService userAccountService, IConfiguration config)
+        public AccountController(IUserAccountService userAccountService)
         {
-            _userManager = userManager;
-            _tokenService = tokenService;
-            _signInManager = signInManager;
-            _emailService = emailService;
             _userAccountService = userAccountService;
-            _config = config;
         }
-
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            
+            // Validating the shape of the incoming DTO (required fields, data annotations)
             if (!ModelState.IsValid) { return BadRequest(ModelState); }
 
-            var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == loginDto.Username);
-
-            if (user == null)
-            {
-                return Unauthorized(new LoginErrorDto
-                {
-                    Error = "Invalid Username or Password."
-                });
-            }
-
-            // verify the user has confirmed their email
-            if (!await _userManager.IsEmailConfirmedAsync(user))
-            {
-                return Unauthorized(new LoginErrorDto
-                {
-                    Error = "Please verify your email before logging in."
-                });
-            }
-
-            var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+            var result = await _userAccountService.LoginAsync(loginDto.Username, loginDto.Password);
 
             if (!result.Succeeded)
             {
-                return Unauthorized(new LoginErrorDto
-                {
-                    Error = "Invalid Username or Password."
-                });
+                // The controller's only job here is translating "login failed" into
+                // the right HTTP status (401) and the response shape your frontend expects.
+                return Unauthorized(new LoginErrorDto { Error = result.ErrorMessage! });
             }
 
-            var token = await _tokenService.CreateToken(user);
-
-            // Set token as secure HTTP-only cookie
+            // create the auth cookie
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -81,91 +40,47 @@ namespace api.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             };
 
-            Response.Cookies.Append("access_token", token.ToString(), cookieOptions);
+            Response.Cookies.Append("access_token", result.Token!, cookieOptions);
 
             return Ok(new
             {
-                token = token,
-                UserName = user.UserName,
-                Email = user.Email
+                token = result.Token,
+                UserName = result.UserName,
+                Email = result.Email
                 // Optionally remove Token from response
             });
         } // end login 
 
-
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
-        {         
-            try
+        {
+            if (!ModelState.IsValid)
             {
-                // check model state
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                // create new appuser
-                var appUser = new ApplicationUser
-                {
-                    UserName = registerDto.Username,
-                    Email = registerDto.EmailAddress,
-                };
-
-                // create the appuser in the DB
-                var createdUser = await _userManager.CreateAsync(appUser, registerDto.Password);
-
-                if (!createdUser.Succeeded)
-                {
-                    return StatusCode(500, createdUser.Errors);
-                }
-
-                // add user role to the new user
-                var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
-
-                if (!roleResult.Succeeded)
-                {
-                    return StatusCode(500, roleResult.Errors);
-                }
-
-                // create new email verification token
-                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
-
-                // Encode for URL
-                var encodedEmailToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
-
-                // Use frontend base URL from configuration
-                var frontendBaseUrl = _config["Frontend:BaseUrl"];
-                var confirmationLink = $"{frontendBaseUrl}/verify-email?userId={appUser.Id}&token={encodedEmailToken}";
-
-                // Send email
-                await _emailService.SendEmailAsync(
-                    appUser.Email,
-                    "Verify your email - The Bearded Troll",
-                    $@"
-                    <h2>Welcome to The Bearded Troll!</h2>
-                    <p>Thanks for signing up! Please click below to verify your email address.</p>
-                    <a href='{confirmationLink}' 
-                       style='display:inline-block;padding:10px 20px;background-color:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;'>
-                       Verify Email
-                    </a>"
-                );
-
-                return Ok(new
-                {
-                    Message = "Registration successful! Please check your email to verify your account.",
-                    appUser.UserName,
-                    appUser.Email
-                });
+                return BadRequest(ModelState);
             }
-            catch (Exception e)
+
+            // create the new user
+            var result = await _userAccountService.RegisterAsync(registerDto.Username, registerDto.EmailAddress, registerDto.Password);
+
+            if (!result.Succeeded)
             {
-                return StatusCode(500, e);
+                return StatusCode(500, result.Errors);
             }
+
+            return Ok(new
+            {
+                Message = "Registration successful! Please check your email to verify your account.",
+                result.UserName,
+                result.Email
+            });
         } // end register
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
+            // Pure cookie manipulation — no business logic, no DB access.
+            // This is a textbook example of something that belongs ENTIRELY
+            // in the controller and never needed to move anywhere.
             Response.Cookies.Delete("access_token", new CookieOptions
             {
                 HttpOnly = true,
@@ -176,23 +91,28 @@ namespace api.Controllers
             return Ok(new { message = "Logged out" });
         }
 
-
         [Authorize]
         [HttpGet("status")]
         public async Task<IActionResult> GetAuthStatus()
         {
+            // Reading claims off the current HTTP request's User principal is
+            // an HTTP/auth-context concern, so it stays in the controller.
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            var user = await _userManager.FindByEmailAsync(userEmail);
-            var roles = await _userManager.GetRolesAsync(user);
 
-            return Ok(new
-            {
-                user.Id,
-                user.UserName,
-                user.Email,
-                roles
-            });
+            // Everything after this — looking the user up, fetching their roles —
+            // is data access, so it's delegated to the service.
+            var status = await _userAccountService.GetAuthStatusAsync(userEmail!);
+
+            // Defensive check: if the JWT's email claim somehow doesn't match a real
+            // user (stale token, deleted account, etc.), fail gracefully instead of
+            // letting a null reference blow up into an unhandled 500.
+            if (status == null) return Unauthorized();
+
+            return Ok(status);
         }
+
+        // ── Everything below already delegated to the service correctly
+        //    and didn't need to change — included so the file is complete. ──
 
         [HttpPost("send-verification/{userId}")]
         public async Task<IActionResult> SendVerificationEmail(string userId)

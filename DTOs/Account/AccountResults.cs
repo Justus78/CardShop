@@ -18,7 +18,6 @@
 
         // Small factory helpers so the service doesn't have to write
         // "new AuthResult { Succeeded = false, ... }" over and over.
-        // Purely a readability nicety — feel free to remove if you don't like the style.
         public static AuthResult Fail(string error) => new() { Succeeded = false, ErrorMessage = error };
 
         public static AuthResult Success(string token, string userName, string email) => new()
