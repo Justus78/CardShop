@@ -20,7 +20,8 @@ namespace api.Services
         }
 
         public Task<int> CountAsync() => _repository.CountAsync();
-        public Task<PagedResult<Product>> GetAllAsync(ProductQueryObject queryObject) => _repository.GetAllAsync(queryObject); public Task<Product?> GetByIdAsync(int id) => _repository.GetByIdAsync(id);
+        public Task<PagedResult<Product>> GetAllAsync(ProductQueryObject queryObject) => _repository.GetAllAsync(queryObject); 
+        public Task<Product?> GetByIdAsync(int id) => _repository.GetByIdAsync(id);
 
         public async Task<Product> CreateAsync(CreateProductDto dto)
         {

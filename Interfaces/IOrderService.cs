@@ -1,15 +1,16 @@
 ﻿using api.DTOs.Order;
 using api.Models;
+using CardShop.Models;
 
 namespace api.Interfaces
 {
     public interface IOrderService
     {
-        Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string userId); // creates pending order
+        Task<CreateOrderResultDto> CreateOrderWithPaymentIntentAsync(CreateOrderDto dto, string userId);
         Task<List<OrderDto>> GetOrdersForUserAsync(string userId);
         Task<OrderDto?> GetOrderByIdAsync(int orderId, string userId);
-        Task MarkOrderPaidAsync(string paymentIntentId); // webhook finalization succeeded
-        Task MarkOrderFailedAsync(string paymentIntentId); // webhook finalization failed
+        Task MarkOrderPaidAsync(string paymentIntentId);
+        Task MarkOrderFailedAsync(string paymentIntentId);
         Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus);
     }
 }

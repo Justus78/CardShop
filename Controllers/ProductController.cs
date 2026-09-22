@@ -18,7 +18,6 @@ namespace api.Controllers
         }
 
         [HttpGet]
-        [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] ProductQueryObject queryObject)
         {
             if (!ModelState.IsValid)
