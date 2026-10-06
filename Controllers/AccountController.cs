@@ -111,9 +111,6 @@ namespace api.Controllers
             return Ok(status);
         }
 
-        // ── Everything below already delegated to the service correctly
-        //    and didn't need to change — included so the file is complete. ──
-
         [HttpPost("send-verification/{userId}")]
         public async Task<IActionResult> SendVerificationEmail(string userId)
         {
