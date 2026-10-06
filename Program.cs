@@ -4,6 +4,7 @@ using api.Middleware;
 using api.Models;
 using api.Repositories;
 using api.Services;
+using api.UnitOfWork;
 using CardShop.Data;
 using CardShop.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -143,6 +144,7 @@ builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 //builder.Services.AddScoped<ITradeInService, TradeInService>();
 //builder.Services.AddScoped<IAdminTradeInService, AdminTradeInService>();
 
