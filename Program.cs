@@ -5,6 +5,7 @@ using api.Models;
 using api.Repositories;
 using api.Services;
 using api.UnitOfWork;
+using api.BackgroundServices;
 using CardShop.Data;
 using CardShop.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -126,6 +127,8 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
+
+builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 
 // configuration for stripe
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));

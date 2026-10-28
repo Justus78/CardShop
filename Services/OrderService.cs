@@ -1,6 +1,8 @@
 ﻿using api.DTOs.Order;
+using api.Exceptions;
 using api.Interfaces;
 using api.Models;
+using api.UnitOfWork;
 using CardShop.Models;
 using Stripe;
 
@@ -8,152 +10,217 @@ namespace api.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly IOrderRepository _orderRepository;
-        private readonly IProductRepository _productRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
 
-        public OrderService(IOrderRepository orderRepository, IProductRepository productRepository, IConfiguration config)
+        public OrderService(IUnitOfWork unitOfWork, IConfiguration config)
         {
-            _orderRepository = orderRepository;
-            _productRepository = productRepository;
+            _unitOfWork = unitOfWork;
             _config = config;
         }
 
+        // ─────────────────────────────────────────────────────────
+        // CREATE ORDER + PAYMENT INTENT
+        //
+        // PHASE 1 (database only, atomic): reserve stock for every item and
+        //   create the Order as Pending. Any failure rolls back ALL of it.
+        // PHASE 2 (Stripe, external): create the PaymentIntent. If that fails,
+        //   Phase 1 is already committed, so we undo it manually.
+        // ─────────────────────────────────────────────────────────
         public async Task<CreateOrderResultDto> CreateOrderWithPaymentIntentAsync(CreateOrderDto dto, string userId)
         {
-            // Validate stock before ever touching Stripe
-            foreach (var item in dto.Items)
+            // ── PHASE 1 ──
+            // Everything inside this lambda runs in one transaction via
+            // ExecuteInTransactionAsync (see UnitOfWork.cs for why that wrapper
+            // is required with EnableRetryOnFailure).
+            //
+            // RE-RUN SAFETY: on a transient SQL failure EF may run this lambda
+            // again from the top, so the Order is built INSIDE it (a fresh
+            // object each attempt), and nothing non-database (like Stripe)
+            // happens in here.
+            var order = await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null)
-                    throw new InvalidOperationException($"Product not found: {item.ProductId}");
-
-                if (product.StockQuantity < item.Quantity)
-                    throw new InvalidOperationException(
-                        $"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {item.Quantity}");
-            }
-
-            StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
-
-            var options = new PaymentIntentCreateOptions
-            {
-                Amount = (long)(dto.Items.Sum(i => i.Quantity * i.UnitPrice) * 100),
-                Currency = "usd",
-                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
-                Shipping = new ChargeShippingOptions
+                foreach (var item in dto.Items)
                 {
-                    Name = dto.ShippingInfo.FullName,
-                    Address = new AddressOptions
+                    // Atomic check-and-decrement: succeeds only if enough stock
+                    // exists at the instant of the UPDATE, so two buyers racing
+                    // for the last unit can't both win.
+                    var decremented = await _unitOfWork.ProductRepository
+                        .TryDecrementStockAsync(item.ProductId, item.Quantity);
+
+                    if (!decremented)
                     {
-                        Line1 = dto.ShippingInfo.Address,
-                        City = dto.ShippingInfo.City,
-                        State = dto.ShippingInfo.State,
-                        PostalCode = dto.ShippingInfo.PostalCode,
-                        Country = dto.ShippingInfo.Country
+                        var product = await _unitOfWork.ProductRepository.GetByIdAsync(item.ProductId);
+
+                        // Throwing rolls back the transaction, undoing any
+                        // earlier items in this loop that already decremented.
+                        // BusinessRuleException is not a transient SQL error, so
+                        // EF won't retry it — it goes straight to the caller (400).
+                        throw new BusinessRuleException(
+                            $"Not enough stock for '{product?.Name ?? $"product {item.ProductId}"}'. " +
+                            $"Available: {product?.StockQuantity ?? 0}, Requested: {item.Quantity}");
+                    }
+
+                    // If that brought stock to 0, remove this product from
+                    // other users' carts so it can't be bought while unavailable.
+                    var updatedProduct = await _unitOfWork.ProductRepository.GetByIdAsync(item.ProductId);
+                    if (updatedProduct != null && updatedProduct.StockQuantity == 0)
+                    {
+                        await _unitOfWork.OrderRepository.RemoveStaleCartItemsAsync(item.ProductId, userId);
                     }
                 }
-            };
 
-            var paymentIntentService = new PaymentIntentService();
-            var paymentIntent = await paymentIntentService.CreateAsync(options);
-
-            var order = new Order
-            {
-                UserId = userId,
-                Status = OrderStatus.Pending,
-                PaymentIntentId = paymentIntent.Id,
-                RecipientName = dto.ShippingInfo.FullName,
-                Street = dto.ShippingInfo.Address,
-                City = dto.ShippingInfo.City,
-                State = dto.ShippingInfo.State,
-                PostalCode = dto.ShippingInfo.PostalCode,
-                Country = dto.ShippingInfo.Country,
-                OrderItems = dto.Items.Select(i => new OrderItem
+                var newOrder = new Order
                 {
-                    ProductId = i.ProductId,
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice
-                }).ToList(),
-                TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice)
-            };
+                    UserId = userId,
+                    Status = OrderStatus.Pending,
+                    PaymentProvider = "Stripe",
+                    CreatedDate = DateTime.UtcNow,
+                    RecipientName = dto.ShippingInfo.FullName,
+                    Street = dto.ShippingInfo.Address,
+                    City = dto.ShippingInfo.City,
+                    State = dto.ShippingInfo.State,
+                    PostalCode = dto.ShippingInfo.PostalCode,
+                    Country = dto.ShippingInfo.Country,
+                    OrderItems = dto.Items.Select(i => new OrderItem
+                    {
+                        ProductId = i.ProductId,
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice
+                    }).ToList(),
+                    TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice)
+                };
 
-            var created = await _orderRepository.AddAsync(order);
+                await _unitOfWork.OrderRepository.AddAsync(newOrder);
+                await _unitOfWork.SaveChangesAsync();
 
-            return new CreateOrderResultDto
+                return newOrder;
+            });
+
+            // ── PHASE 2: Stripe. Stock + order are already committed. ──
+            try
             {
-                ClientSecret = paymentIntent.ClientSecret,
-                PaymentIntentId = paymentIntent.Id,
-                Order = MapToDto(created)
-            };
+                StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
+
+                var options = new PaymentIntentCreateOptions
+                {
+                    Amount = (long)(order.TotalAmount * 100),
+                    Currency = "usd",
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
+                    Shipping = new ChargeShippingOptions
+                    {
+                        Name = order.RecipientName,
+                        Address = new AddressOptions
+                        {
+                            Line1 = order.Street,
+                            City = order.City,
+                            State = order.State,
+                            PostalCode = order.PostalCode,
+                            Country = order.Country
+                        }
+                    }
+                };
+
+                var paymentIntentService = new PaymentIntentService();
+                var paymentIntent = await paymentIntentService.CreateAsync(options);
+
+                order.PaymentIntentId = paymentIntent.Id;
+                await _unitOfWork.SaveChangesAsync();
+
+                return new CreateOrderResultDto
+                {
+                    ClientSecret = paymentIntent.ClientSecret,
+                    PaymentIntentId = paymentIntent.Id,
+                    Order = MapToDto(order)
+                };
+            }
+            catch (StripeException)
+            {
+                // Compensating action: Phase 1 already committed, so put the
+                // stock back and cancel the order manually.
+                foreach (var item in order.OrderItems)
+                {
+                    await _unitOfWork.ProductRepository.RestoreStockAsync(item.ProductId, item.Quantity);
+                }
+
+                order.Status = OrderStatus.Cancelled;
+                await _unitOfWork.SaveChangesAsync();
+
+                throw;
+            }
         }
 
+        // Stock was already reserved at creation, so paying just flips status.
         public async Task MarkOrderPaidAsync(string paymentIntentId)
         {
-            var order = await _orderRepository.GetByPaymentIntentIdAsync(paymentIntentId);
+            var order = await _unitOfWork.OrderRepository.GetByPaymentIntentIdAsync(paymentIntentId);
             if (order == null) return;
             if (order.Status == OrderStatus.Paid) return;
-
-            foreach (var item in order.OrderItems)
-            {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null) continue;
-
-                if (product.StockQuantity < item.Quantity)
-                    throw new InvalidOperationException($"Not enough stock for '{product.Name}' at payment time.");
-
-                product.StockQuantity -= item.Quantity;
-
-                if (product.StockQuantity == 0)
-                    await _orderRepository.RemoveStaleCartItemsAsync(product.Id, order.UserId);
-            }
 
             order.Status = OrderStatus.Paid;
             order.PaidAt = DateTime.UtcNow;
 
-            await _orderRepository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task MarkOrderFailedAsync(string paymentIntentId)
-        {
-            var order = await _orderRepository.GetByPaymentIntentIdAsync(paymentIntentId);
-            if (order == null) return;
-            if (order.Status == OrderStatus.Failed || order.Status == OrderStatus.Paid) return;
+        // NOTE: there is intentionally no MarkOrderFailedAsync. A declined card leaves
+        // the Stripe PaymentIntent open for a retry, so a failed attempt must not
+        // release stock. Abandoned orders are released by ExpireStaleOrdersAsync.
 
-            order.Status = OrderStatus.Failed;
-            await _orderRepository.SaveChangesAsync();
+        // Called by OrderExpirationBackgroundService: cancels Pending orders
+        // older than `olderThan` and releases the stock they were holding.
+        public async Task<int> ExpireStaleOrdersAsync(TimeSpan olderThan)
+        {
+            var cutoff = DateTime.UtcNow - olderThan;
+            var staleOrders = await _unitOfWork.OrderRepository.GetStalePendingOrdersAsync(cutoff);
+
+            foreach (var order in staleOrders)
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    await _unitOfWork.ProductRepository.RestoreStockAsync(item.ProductId, item.Quantity);
+                }
+
+                order.Status = OrderStatus.Cancelled;
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            return staleOrders.Count;
         }
 
         public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)
         {
-            var orders = await _orderRepository.GetForUserAsync(userId);
+            var orders = await _unitOfWork.OrderRepository.GetForUserAsync(userId);
             return orders.Select(MapToDto).ToList();
         }
 
         public async Task<OrderDto?> GetOrderByIdAsync(int orderId, string userId)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId, userId);
+            var order = await _unitOfWork.OrderRepository.GetByIdAsync(orderId, userId);
             return order == null ? null : MapToDto(order);
         }
 
         public async Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
+            var order = await _unitOfWork.OrderRepository.GetByIdAsync(orderId);
             if (order == null) return false;
 
             order.Status = newStatus;
-            await _orderRepository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
         private static OrderDto MapToDto(Order order)
         {
+            // Pre-existing caveat: order.User may not be loaded on a freshly
+            // created order, so Username can come back null there.
             return new OrderDto
             {
                 Id = order.Id,
-                Username = order.User.UserName,
+                Username = order.User?.UserName,
                 PaymentIntentId = order.PaymentIntentId,
                 Status = order.Status,
-                CreatedAt = (DateTime)order.CreatedDate,
+                CreatedAt = order.CreatedDate,
                 PaidAt = order.PaidAt,
                 RecipientName = order.RecipientName,
                 Street = order.Street,
@@ -161,11 +228,11 @@ namespace api.Services
                 State = order.State,
                 PostalCode = order.PostalCode,
                 Country = order.Country,
-                TotalAmount = (decimal)order.TotalAmount,
+                TotalAmount = order.TotalAmount,
                 Items = order.OrderItems.Select(oi => new OrderItemDto
                 {
                     ProductId = oi.ProductId,
-                    ProductName = oi.Product.Name,
+                    ProductName = oi.Product?.Name,
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice
                 }).ToList()

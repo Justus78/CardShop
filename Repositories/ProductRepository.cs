@@ -119,6 +119,52 @@ namespace api.Repositories
         }
 
         public async Task<bool> SaveChangesAsync() => await _context.SaveChangesAsync() > 0;
+
+        // Why this isn't just "read stock, check in C#, write stock":
+        // That pattern has a race condition — two requests can both read StockQuantity
+        // as 1 before either one writes, both pass the "is there enough?" check, and
+        // you end up at -1. ExecuteUpdateAsync instead sends ONE SQL statement where
+        // the check and the write happen together, atomically, at the database level:
+        //
+        //   UPDATE Products SET StockQuantity = StockQuantity - @quantity
+        //   WHERE Id = @productId AND StockQuantity >= @quantity
+        //
+        // If two requests race for the last unit, the database guarantees only one
+        // of them can actually apply — the other gets 0 rows affected, which we
+        // read as "not enough stock," with nothing ever going negative.
+        //
+        // Trade-off worth knowing: ExecuteUpdateAsync runs IMMEDIATELY against the
+        // database — it does NOT wait for SaveChangesAsync and is not tracked by
+        // the ChangeTracker the way _context.Products.Update(...) would be. That
+        // means if you call this multiple times in a row (once per item in an
+        // order) and a later call fails, the earlier ones have ALREADY been
+        // committed to the database — you can't just "not call SaveChanges" to
+        // undo them. This is exactly why OrderService wraps multiple calls to this
+        // method in an explicit transaction (via IUnitOfWork.BeginTransactionAsync),
+        // so a failure partway through can be properly rolled back.
+        public async Task<bool> TryDecrementStockAsync(int productId, int quantity)
+        {
+            var rowsAffected = await _context.Products
+                .Where(p => p.Id == productId && p.StockQuantity >= quantity)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(p => p.StockQuantity, p => p.StockQuantity - quantity));
+
+            // ExecuteUpdateAsync returns how many rows matched the WHERE clause and
+            // were updated. 1 = success. 0 = either the product doesn't exist, or
+            // StockQuantity < quantity (not enough stock) — both read as "failed."
+            return rowsAffected == 1;
+        }
+
+        // Restoring stock doesn't have the same race-condition risk as decrementing
+        // (nothing else is competing to restore the same stock at the same instant),
+        // so no conditional WHERE clause is needed here — just add it back.
+        public async Task RestoreStockAsync(int productId, int quantity)
+        {
+            await _context.Products
+                .Where(p => p.Id == productId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(p => p.StockQuantity, p => p.StockQuantity + quantity));
+        }
     }
 }
 

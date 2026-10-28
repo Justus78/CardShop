@@ -1,4 +1,5 @@
 ﻿using api.Interfaces;
+using api.Models;
 using CardShop.Data;
 using CardShop.Models;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +75,18 @@ namespace api.Repositories
                 .ToListAsync();
 
             _context.CartItems.RemoveRange(cartItems);
+        }
+
+        // Include(o => o.OrderItems) matters here: the background service needs each
+        // stale order's line items (ProductId + Quantity) to know what stock to
+        // restore. Without the Include, OrderItems would be empty/not loaded and
+        // the restore loop in OrderService would silently do nothing.
+        public async Task<List<Order>> GetStalePendingOrdersAsync(DateTime olderThan)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.Status == OrderStatus.Pending && o.CreatedDate < olderThan)
+                .ToListAsync();
         }
     }
 }
