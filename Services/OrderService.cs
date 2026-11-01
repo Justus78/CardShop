@@ -12,62 +12,86 @@ namespace api.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
+        private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IUnitOfWork unitOfWork, IConfiguration config)
+        public OrderService(IUnitOfWork unitOfWork, IConfiguration config, ILogger<OrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _config = config;
+            _logger = logger;
         }
 
         // ─────────────────────────────────────────────────────────
         // CREATE ORDER + PAYMENT INTENT
         //
-        // PHASE 1 (database only, atomic): reserve stock for every item and
-        //   create the Order as Pending. Any failure rolls back ALL of it.
-        // PHASE 2 (Stripe, external): create the PaymentIntent. If that fails,
-        //   Phase 1 is already committed, so we undo it manually.
+        // PHASE 1 (database only, atomic): reserve stock, price the items from
+        //   the DATABASE, and create the Order as Pending. Any failure rolls
+        //   back everything.
+        // PHASE 2 (Stripe): create the PaymentIntent. If that fails, Phase 1 is
+        //   already committed, so we undo it manually.
         // ─────────────────────────────────────────────────────────
         public async Task<CreateOrderResultDto> CreateOrderWithPaymentIntentAsync(CreateOrderDto dto, string userId)
         {
+            // ── Input validation, before touching the database or Stripe ──
+            if (dto.Items == null || dto.Items.Count == 0)
+                throw new BusinessRuleException("An order must contain at least one item.");
+
+            // A zero or negative quantity must never reach the stock logic:
+            // "decrement by -5" would INCREASE stock, and the total could go negative.
+            if (dto.Items.Any(i => i.Quantity <= 0))
+                throw new BusinessRuleException("Item quantities must be greater than zero.");
+
+            // Merge repeated lines for the same product so each product is
+            // reserved once, with its combined quantity.
+            var lines = dto.Items
+                .GroupBy(i => i.ProductId)
+                .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) })
+                .ToList();
+
             // ── PHASE 1 ──
-            // Everything inside this lambda runs in one transaction via
-            // ExecuteInTransactionAsync (see UnitOfWork.cs for why that wrapper
-            // is required with EnableRetryOnFailure).
-            //
-            // RE-RUN SAFETY: on a transient SQL failure EF may run this lambda
-            // again from the top, so the Order is built INSIDE it (a fresh
-            // object each attempt), and nothing non-database (like Stripe)
-            // happens in here.
+            // Runs inside one transaction. May be re-run on a transient SQL
+            // failure, so everything it builds is created INSIDE the lambda.
             var order = await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                foreach (var item in dto.Items)
+                var orderItems = new List<OrderItem>();
+
+                foreach (var line in lines)
                 {
-                    // Atomic check-and-decrement: succeeds only if enough stock
-                    // exists at the instant of the UPDATE, so two buyers racing
-                    // for the last unit can't both win.
+                    // Atomic check-and-decrement: only succeeds if enough stock
+                    // exists at the instant of the UPDATE.
                     var decremented = await _unitOfWork.ProductRepository
-                        .TryDecrementStockAsync(item.ProductId, item.Quantity);
+                        .TryDecrementStockAsync(line.ProductId, line.Quantity);
 
-                    if (!decremented)
+                    // Loaded AFTER the decrement attempt. This is the first time this
+                    // request loads the product, so StockQuantity is fresh from the DB
+                    // (ExecuteUpdate bypasses the change tracker, so a copy loaded
+                    // earlier would be stale). It supplies the authoritative PRICE
+                    // and the name for error messages.
+                    var product = await _unitOfWork.ProductRepository.GetByIdAsync(line.ProductId);
+
+                    if (!decremented || product == null)
                     {
-                        var product = await _unitOfWork.ProductRepository.GetByIdAsync(item.ProductId);
-
-                        // Throwing rolls back the transaction, undoing any
-                        // earlier items in this loop that already decremented.
-                        // BusinessRuleException is not a transient SQL error, so
-                        // EF won't retry it — it goes straight to the caller (400).
-                        throw new BusinessRuleException(
-                            $"Not enough stock for '{product?.Name ?? $"product {item.ProductId}"}'. " +
-                            $"Available: {product?.StockQuantity ?? 0}, Requested: {item.Quantity}");
+                        // Throwing rolls back any earlier lines that already decremented.
+                        // BusinessRuleException is not a transient SQL error, so it is
+                        // not retried and surfaces as a 400.
+                        throw new BusinessRuleException(product == null
+                            ? $"Product {line.ProductId} was not found."
+                            : $"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {line.Quantity}");
                     }
 
-                    // If that brought stock to 0, remove this product from
-                    // other users' carts so it can't be bought while unavailable.
-                    var updatedProduct = await _unitOfWork.ProductRepository.GetByIdAsync(item.ProductId);
-                    if (updatedProduct != null && updatedProduct.StockQuantity == 0)
+                    // If that took stock to 0, remove the product from other users' carts.
+                    if (product.StockQuantity == 0)
                     {
-                        await _unitOfWork.OrderRepository.RemoveStaleCartItemsAsync(item.ProductId, userId);
+                        await _unitOfWork.OrderRepository.RemoveStaleCartItemsAsync(line.ProductId, userId);
                     }
+
+                    orderItems.Add(new OrderItem
+                    {
+                        ProductId = line.ProductId,
+                        Quantity = line.Quantity,
+                        // Price comes from the database, never from the request.
+                        UnitPrice = product.Price
+                    });
                 }
 
                 var newOrder = new Order
@@ -82,13 +106,8 @@ namespace api.Services
                     State = dto.ShippingInfo.State,
                     PostalCode = dto.ShippingInfo.PostalCode,
                     Country = dto.ShippingInfo.Country,
-                    OrderItems = dto.Items.Select(i => new OrderItem
-                    {
-                        ProductId = i.ProductId,
-                        Quantity = i.Quantity,
-                        UnitPrice = i.UnitPrice
-                    }).ToList(),
-                    TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice)
+                    OrderItems = orderItems,
+                    TotalAmount = orderItems.Sum(i => i.Quantity * i.UnitPrice)
                 };
 
                 await _unitOfWork.OrderRepository.AddAsync(newOrder);
@@ -136,8 +155,8 @@ namespace api.Services
             }
             catch (StripeException)
             {
-                // Compensating action: Phase 1 already committed, so put the
-                // stock back and cancel the order manually.
+                // Compensating action: Phase 1 already committed, so restore the
+                // stock and cancel the order by hand.
                 foreach (var item in order.OrderItems)
                 {
                     await _unitOfWork.ProductRepository.RestoreStockAsync(item.ProductId, item.Quantity);
@@ -150,12 +169,33 @@ namespace api.Services
             }
         }
 
-        // Stock was already reserved at creation, so paying just flips status.
+        // ─────────────────────────────────────────────────────────
+        // MARK ORDER PAID (called by the Stripe webhook, and by the sweep)
+        //
+        // Only a PENDING order can become Paid. Before this guard, any order
+        // was flipped to Paid, including one the sweep had already cancelled
+        // and whose stock was already released.
+        // ─────────────────────────────────────────────────────────
         public async Task MarkOrderPaidAsync(string paymentIntentId)
         {
             var order = await _unitOfWork.OrderRepository.GetByPaymentIntentIdAsync(paymentIntentId);
             if (order == null) return;
-            if (order.Status == OrderStatus.Paid) return;
+
+            if (order.Status != OrderStatus.Pending)
+            {
+                // Paid / Shipped: a duplicate webhook delivery, nothing to do.
+                // Cancelled / Failed: the customer was charged but the order was
+                // already released. We do NOT flip it to Paid, because there is no
+                // stock behind it. A human needs to refund it.
+                if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Failed)
+                {
+                    _logger.LogError(
+                        "Payment succeeded for PaymentIntent {PaymentIntentId}, but order {OrderId} is already {Status} " +
+                        "and its stock was released. Manual review / refund required.",
+                        paymentIntentId, order.Id, order.Status);
+                }
+                return;
+            }
 
             order.Status = OrderStatus.Paid;
             order.PaidAt = DateTime.UtcNow;
@@ -163,29 +203,120 @@ namespace api.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        // NOTE: there is intentionally no MarkOrderFailedAsync. A declined card leaves
-        // the Stripe PaymentIntent open for a retry, so a failed attempt must not
-        // release stock. Abandoned orders are released by ExpireStaleOrdersAsync.
-
-        // Called by OrderExpirationBackgroundService: cancels Pending orders
-        // older than `olderThan` and releases the stock they were holding.
+        // ─────────────────────────────────────────────────────────
+        // EXPIRE STALE ORDERS (called by OrderExpirationBackgroundService)
+        //
+        // For each Pending order older than `olderThan`, Stripe is the source of
+        // truth about whether it can still be paid. Stock is released ONLY once
+        // Stripe confirms the PaymentIntent can no longer succeed.
+        //
+        // Returns how many orders were cancelled and released.
+        // ─────────────────────────────────────────────────────────
         public async Task<int> ExpireStaleOrdersAsync(TimeSpan olderThan)
         {
+            // The key is a static setting in the Stripe library. The sweep may run
+            // before any order has been created since startup, so set it here too.
+            StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
+
             var cutoff = DateTime.UtcNow - olderThan;
             var staleOrders = await _unitOfWork.OrderRepository.GetStalePendingOrdersAsync(cutoff);
 
+            var releasedCount = 0;
+            var paymentIntentService = new PaymentIntentService();
+
             foreach (var order in staleOrders)
             {
-                foreach (var item in order.OrderItems)
-                {
-                    await _unitOfWork.ProductRepository.RestoreStockAsync(item.ProductId, item.Quantity);
-                }
+                // Copy plain values now; the entity may be detached if a transaction retries.
+                var orderId = order.Id;
+                var paymentIntentId = order.PaymentIntentId;
+                var items = order.OrderItems.Select(i => (i.ProductId, i.Quantity)).ToList();
 
-                order.Status = OrderStatus.Cancelled;
+                // One bad order must not stop the rest of the sweep.
+                try
+                {
+                    if (!string.IsNullOrEmpty(paymentIntentId))
+                    {
+                        var intent = await paymentIntentService.GetAsync(paymentIntentId);
+
+                        switch (intent.Status)
+                        {
+                            case "succeeded":
+                                // The customer DID pay; the webhook was delayed or missed.
+                                // Complete the order instead of cancelling it.
+                                _logger.LogWarning(
+                                    "Stale order {OrderId} was already paid in Stripe ({PaymentIntentId}); marking it Paid.",
+                                    orderId, paymentIntentId);
+                                await MarkOrderPaidAsync(paymentIntentId);
+                                continue;
+
+                            case "processing":
+                            case "requires_capture":
+                                // A payment is in flight. Leave it for a later sweep.
+                                continue;
+
+                            case "canceled":
+                                // Already dead in Stripe; safe to release below.
+                                break;
+
+                            default:
+                                // Still open (requires_payment_method, requires_action, ...).
+                                // Cancel it in Stripe FIRST so it can't be paid after we
+                                // release the stock.
+                                try
+                                {
+                                    await paymentIntentService.CancelAsync(paymentIntentId,
+                                        new PaymentIntentCancelOptions { CancellationReason = "abandoned" });
+                                }
+                                catch (StripeException ex)
+                                {
+                                    // Most likely the customer paid between our check and
+                                    // the cancel. Leave the order Pending: the next sweep
+                                    // will see "succeeded" and complete it.
+                                    _logger.LogWarning(ex,
+                                        "Could not cancel PaymentIntent {PaymentIntentId} for order {OrderId}; leaving it for the next sweep.",
+                                        paymentIntentId, orderId);
+                                    continue;
+                                }
+                                break;
+                        }
+                    }
+                    // (No PaymentIntentId means Stripe was never reached for this order,
+                    // so there is nothing to cancel there.)
+
+                    if (await ReleaseOrderAsync(orderId, items))
+                    {
+                        releasedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Includes Stripe being unreachable. The order stays Pending and is
+                    // retried on the next sweep; we never cancel what we couldn't verify.
+                    _logger.LogError(ex, "Failed to expire order {OrderId}; it will be retried on the next sweep.", orderId);
+                }
             }
 
-            await _unitOfWork.SaveChangesAsync();
-            return staleOrders.Count;
+            return releasedCount;
+        }
+
+        // Cancels one Pending order and restores its stock, as a single transaction.
+        // The status change is a conditional UPDATE ("only if still Pending"), so it
+        // reads the real database value, not a possibly stale in-memory copy. If the
+        // order is no longer Pending (e.g. it was just paid), nothing is restored.
+        private async Task<bool> ReleaseOrderAsync(int orderId, List<(int ProductId, int Quantity)> items)
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var cancelled = await _unitOfWork.OrderRepository.TryCancelPendingOrderAsync(orderId);
+                if (!cancelled) return false;
+
+                foreach (var (productId, quantity) in items)
+                {
+                    await _unitOfWork.ProductRepository.RestoreStockAsync(productId, quantity);
+                }
+
+                return true;
+            });
         }
 
         public async Task<List<OrderDto>> GetOrdersForUserAsync(string userId)

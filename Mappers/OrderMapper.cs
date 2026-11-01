@@ -47,7 +47,6 @@ namespace CardShop.Mappers
                 {
                     ProductId = i.ProductId,
                     Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice
                 }).ToList()
             };
         }

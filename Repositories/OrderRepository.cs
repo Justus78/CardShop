@@ -88,5 +88,24 @@ namespace api.Repositories
                 .Where(o => o.Status == OrderStatus.Pending && o.CreatedDate < olderThan)
                 .ToListAsync();
         }
+
+
+        // Same idea as TryDecrementStockAsync: the "is it still Pending?" check and the
+        // write happen in ONE SQL statement:
+        //
+        //   UPDATE Orders SET Status = <Cancelled> WHERE Id = @id AND Status = <Pending>
+        //
+        // If a webhook marked the order Paid a moment ago, the WHERE clause matches no
+        // row, this returns false, and the sweep leaves the order (and its stock) alone.
+        // Reading the order into memory and checking Status there could use a stale copy.
+        public async Task<bool> TryCancelPendingOrderAsync(int orderId)
+        {
+            var rowsAffected = await _context.Orders
+                .Where(o => o.Id == orderId && o.Status == OrderStatus.Pending)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(o => o.Status, OrderStatus.Cancelled));
+
+            return rowsAffected == 1;
+        }
     }
 }

@@ -2,7 +2,7 @@
 {
     public class CreateOrderDto
     {
-        public List<CreateOrderItemDto> Items { get; set; }
+        public List<OrderItemDto> Items { get; set; }
         public ShippingInfoDto ShippingInfo { get; set; } = new();
         public string? PaymentProvider { get; set; }
 
