@@ -35,45 +35,53 @@ namespace api.Services
             _config = config;
         }
 
-        // ─────────────────────────────────────────────────────────
-        // LOGIN
-        // All the "is this a valid login" logic that used to live directly
-        // in the controller's [HttpPost("login")] action. Every early return
-        // here used to be an `Unauthorized(...)` inside the controller —
-        // now it's just "return a failed result and let the controller
-        // decide how to phrase the HTTP response."
-        // ─────────────────────────────────────────────────────────
+        
         public async Task<AuthResult> LoginAsync(string username, string password)
         {
-            // Step 1: does a user with this username even exist?
             var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == username);
             if (user == null)
             {
-                // Deliberately vague message (don't reveal whether it was the
-                // username or password that was wrong — that's a security best practice,
-                // preserved exactly from your original code).
                 return AuthResult.Fail("Invalid Username or Password.");
             }
 
-            // Step 2: have they verified their email? (business rule — no verified
-            // email, no login, regardless of whether the password is right)
+            const string lockedOutMessage = "Too many failed login attempts. Please try again in a few minutes.";
+
+            // Already locked out: refuse without even checking the password, so a locked
+            // account can't be probed further. Even the correct password is refused.
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return AuthResult.Fail(lockedOutMessage);
+            }
+
+            if (!await _userManager.CheckPasswordAsync(user, password))
+            {
+                // Count the failure. Once the user reaches MaxFailedAccessAttempts
+                // (Identity's default is 5), this sets a lockout end time
+                // (default 5 minutes) and resets the counter.
+                await _userManager.AccessFailedAsync(user);
+
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    return AuthResult.Fail(lockedOutMessage);
+                }
+
+                return AuthResult.Fail("Invalid Username or Password.");
+            }
+
+            // Correct password: clear any earlier failures. (Skipped when there are none,
+            // to avoid a pointless database write on every normal login.)
+            if (user.AccessFailedCount > 0)
+            {
+                await _userManager.ResetAccessFailedCountAsync(user);
+            }
+
+            // Only someone who proved they know the password gets to learn the account
+            // is unverified.
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
                 return AuthResult.Fail("Please verify your email before logging in.");
             }
 
-            // Step 3: is the password actually correct?
-            // `false` = don't lock the account out after failed attempts (matches your original call).
-            var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
-            if (!result.Succeeded)
-            {
-                return AuthResult.Fail("Invalid Username or Password.");
-            }
-
-            // Step 4: all checks passed — mint a token and hand back a success result.
-            // NOTE: we do NOT set the cookie here. Writing to Response.Cookies is an
-            // HTTP-response concern, not a business-logic concern, so that stays in
-            // the controller. The service's job ends at "here is a valid token."
             var token = await _tokenService.CreateToken(user);
             return AuthResult.Success(token.ToString(), user.UserName!, user.Email!);
         }

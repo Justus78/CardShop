@@ -1,7 +1,9 @@
 ﻿using api.DTOs.Account;
+using api.Extensions;
 using api.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace api.Controllers
@@ -16,41 +18,46 @@ namespace api.Controllers
             _userAccountService = userAccountService;
         }
 
+        // One place that defines the auth cookie's flags. Login and Logout must use
+        // IDENTICAL flags (except Expires) or the browser won't delete the cookie.
+        // Secure + SameSite=None is what a cross-site frontend needs. See the
+        // SameSite note in the walkthrough: if your frontend and API share a
+        // registrable domain, Lax is safer.
+        private static CookieOptions BuildAuthCookieOptions(DateTimeOffset? expires = null)
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = expires
+            };
+        }
+
+        [EnableRateLimiting(RateLimitingExtensions.AuthAttemptsPolicy)]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            // Validating the shape of the incoming DTO (required fields, data annotations)
             if (!ModelState.IsValid) { return BadRequest(ModelState); }
 
             var result = await _userAccountService.LoginAsync(loginDto.Username, loginDto.Password);
 
             if (!result.Succeeded)
             {
-                // The controller's only job here is translating "login failed" into
-                // the right HTTP status (401) and the response shape your frontend expects.
                 return Unauthorized(new LoginErrorDto { Error = result.ErrorMessage! });
             }
 
-            // create the auth cookie
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // change to false only in development
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-
-            Response.Cookies.Append("access_token", result.Token!, cookieOptions);
+            Response.Cookies.Append("access_token", result.Token!,
+                BuildAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(7)));
 
             return Ok(new
             {
-                token = result.Token,
                 UserName = result.UserName,
                 Email = result.Email
-                // Optionally remove Token from response
             });
-        } // end login 
+        }
 
+        [EnableRateLimiting(RateLimitingExtensions.EmailSendingPolicy)]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
@@ -59,8 +66,8 @@ namespace api.Controllers
                 return BadRequest(ModelState);
             }
 
-            // create the new user
-            var result = await _userAccountService.RegisterAsync(registerDto.Username, registerDto.EmailAddress, registerDto.Password);
+            var result = await _userAccountService.RegisterAsync(
+                registerDto.Username, registerDto.EmailAddress, registerDto.Password);
 
             if (!result.Succeeded)
             {
@@ -73,21 +80,12 @@ namespace api.Controllers
                 result.UserName,
                 result.Email
             });
-        } // end register
+        }
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            // Pure cookie manipulation — no business logic, no DB access.
-            // This is a textbook example of something that belongs ENTIRELY
-            // in the controller and never needed to move anywhere.
-            Response.Cookies.Delete("access_token", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-            });
-
+            Response.Cookies.Delete("access_token", BuildAuthCookieOptions());
             return Ok(new { message = "Logged out" });
         }
 
@@ -95,22 +93,15 @@ namespace api.Controllers
         [HttpGet("status")]
         public async Task<IActionResult> GetAuthStatus()
         {
-            // Reading claims off the current HTTP request's User principal is
-            // an HTTP/auth-context concern, so it stays in the controller.
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
-
-            // Everything after this — looking the user up, fetching their roles —
-            // is data access, so it's delegated to the service.
             var status = await _userAccountService.GetAuthStatusAsync(userEmail!);
 
-            // Defensive check: if the JWT's email claim somehow doesn't match a real
-            // user (stale token, deleted account, etc.), fail gracefully instead of
-            // letting a null reference blow up into an unhandled 500.
             if (status == null) return Unauthorized();
 
             return Ok(status);
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.EmailSendingPolicy)]
         [HttpPost("send-verification/{userId}")]
         public async Task<IActionResult> SendVerificationEmail(string userId)
         {
@@ -121,6 +112,7 @@ namespace api.Controllers
             return Ok(new { message = "Verification email sent." });
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.AuthAttemptsPolicy)]
         [HttpPost("verify-email")]
         public async Task<IActionResult> VerifyEmail([FromBody] EmailVerificationDto dto)
         {
@@ -131,16 +123,19 @@ namespace api.Controllers
             return Ok(new { message = "Email verified successfully." });
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.EmailSendingPolicy)]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
         {
-            var success = await _userAccountService.SendPasswordResetLinkAsync(dto.Email);
-            if (!success)
-                return BadRequest(new { message = "Password reset failed." });
+            // The result is deliberately ignored. Answering "that email doesn't exist"
+            // (400) versus "email sent" (200) would let anyone check which email
+            // addresses have accounts here. Every request now gets the same answer.
+            await _userAccountService.SendPasswordResetLinkAsync(dto.Email);
 
-            return Ok(new { message = "Password reset email sent." });
+            return Ok(new { message = "If an account exists for that email, a password reset link has been sent." });
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.AuthAttemptsPolicy)]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
@@ -150,6 +145,5 @@ namespace api.Controllers
 
             return Ok(new { message = "Password reset successfully." });
         }
-
-    } // end controller
-} // end namespace
+    }
+}

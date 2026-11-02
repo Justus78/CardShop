@@ -9,6 +9,7 @@ using api.BackgroundServices;
 using CardShop.Data;
 using CardShop.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides; // NEW: for ForwardedHeaders
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -16,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Stripe;
 using System.Security.Claims;
+using api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -88,6 +90,27 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+builder.Services.AddAuthRateLimiting();
+
+// NEW: forwarded headers, so the rate limiter sees the REAL visitor IP once this
+// runs behind Azure's reverse proxy. Without this, every user would appear to
+// come from the proxy's address and share one rate-limit bucket.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    // X-Forwarded-For carries the visitor's IP; X-Forwarded-Proto says the original
+    // request was HTTPS (Azure ends the TLS connection before it reaches the app).
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    // By default the middleware only trusts these headers from the same machine.
+    // Azure's proxy addresses aren't fixed, so we accept them from Azure's side.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+
+    // ForwardLimit stays at its default of 1: only the LAST entry in X-Forwarded-For
+    // (the one Azure's proxy added) is used. Anything a client puts earlier in the
+    // header is ignored, which is what stops people faking their IP.
+});
+
 // add jwt scheme
 builder.Services.AddAuthentication(options =>
 {
@@ -137,11 +160,11 @@ StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 // configuration for services
 builder.Services.AddScoped<ITokenService, api.Services.TokenService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IProductService, api.Services.ProductService>(); 
+builder.Services.AddScoped<IProductService, api.Services.ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
-builder.Services.AddScoped<IOrderRepository,OrderRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
@@ -173,6 +196,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 app.UseExceptionHandling();
 
 // Configure the HTTP request pipeline.
@@ -185,6 +210,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
