@@ -192,7 +192,15 @@ namespace api.Services
         public async Task MarkOrderPaidAsync(string paymentIntentId)
         {
             var order = await _unitOfWork.OrderRepository.GetByPaymentIntentIdAsync(paymentIntentId);
-            if (order == null) return;
+            if (order == null)
+            {
+                // The customer was charged but nothing in our database matches. Without
+                // this line the webhook would answer 200 and nobody would ever know.
+                _logger.LogWarning(
+                    "Payment succeeded for PaymentIntent {PaymentIntentId} but no matching order exists. Manual review / refund required.",
+                    paymentIntentId);
+                return;
+            }
 
             if (order.Status != OrderStatus.Pending)
             {
