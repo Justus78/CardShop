@@ -176,7 +176,6 @@ builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<ICheckoutService, api.Services.CheckoutService>();
 builder.Services.AddScoped<IAdminService, AdminRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserAccountService, UserAccountService>();
