@@ -72,6 +72,11 @@ namespace api.Controllers
             }
             catch (StripeException e)
             {
+                // Most often a wrong or missing webhook signing secret (an easy slip
+                // when moving from the Stripe CLI to the production webhook), or a
+                // forged request. Without this line it was only a 400 in Stripe's
+                // dashboard, with nothing on your side to say why.
+                _logger.LogWarning(e, "Stripe webhook rejected: signature verification or payload error.");
                 return BadRequest(new { error = e.Message });
             }
         }

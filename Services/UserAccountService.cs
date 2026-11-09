@@ -8,89 +8,89 @@ using System.Text;
 
 namespace api.Services
 {
-    // This is where the actual "what does it mean to log in / register /
-    // check status" logic lives now. Note there's still no raw ApplicationDbContext
-    // here — for Identity-related features, UserManager and SignInManager
-    // ARE your data-access layer (Identity wraps EF Core internally), so we
-    // don't need a separate custom repository the way you did for Cart/Orders/Products.
+    // LOGGING RULES USED IN THIS FILE
+    //  - Never log passwords, JWTs, or email/reset tokens. Never log a whole request.
+    //  - Identify people by user id wherever possible (usernames only when there is no
+    //    user yet, e.g. a failed registration or a login for an unknown name).
+    //  - Message templates with {Placeholders}, never string interpolation, so each
+    //    value stays a searchable field in Application Insights.
+    //  - Levels: Information = normal events, Warning = suspicious or failed security
+    //    events, Error = something broke and needs a human.
     public class UserAccountService : IUserAccountService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager; // NEW — needed for password verification
-        private readonly ITokenService _tokenService;                  // NEW — needed to mint the JWT
+        private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _config;
+        private readonly ILogger<UserAccountService> _logger;
 
+        // SignInManager was removed: LoginAsync now uses UserManager directly (see the
+        // note there), so nothing in this class needs it any more.
         public UserAccountService(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
             ITokenService tokenService,
             IEmailService emailService,
-            IConfiguration config)
+            IConfiguration config,
+            ILogger<UserAccountService> logger)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
             _tokenService = tokenService;
             _emailService = emailService;
             _config = config;
+            _logger = logger;
         }
 
-        
         public async Task<AuthResult> LoginAsync(string username, string password)
         {
             var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == username);
             if (user == null)
             {
+                _logger.LogInformation("Login failed: no user named {Username}.", username);
                 return AuthResult.Fail("Invalid Username or Password.");
             }
 
             const string lockedOutMessage = "Too many failed login attempts. Please try again in a few minutes.";
 
-            // Already locked out: refuse without even checking the password, so a locked
-            // account can't be probed further. Even the correct password is refused.
+            // Why UserManager and not SignInManager.CheckPasswordSignInAsync: your Identity
+            // option RequireConfirmedEmail = true makes that method refuse unverified users
+            // BEFORE checking the password. Doing it here lets us check the password first.
             if (await _userManager.IsLockedOutAsync(user))
             {
+                _logger.LogWarning("Login blocked: account {UserId} is locked out.", user.Id);
                 return AuthResult.Fail(lockedOutMessage);
             }
 
             if (!await _userManager.CheckPasswordAsync(user, password))
             {
-                // Count the failure. Once the user reaches MaxFailedAccessAttempts
-                // (Identity's default is 5), this sets a lockout end time
-                // (default 5 minutes) and resets the counter.
                 await _userManager.AccessFailedAsync(user);
 
                 if (await _userManager.IsLockedOutAsync(user))
                 {
+                    _logger.LogWarning("Account {UserId} was locked out after repeated failed logins.", user.Id);
                     return AuthResult.Fail(lockedOutMessage);
                 }
 
+                _logger.LogInformation("Login failed: wrong password for user {UserId}.", user.Id);
                 return AuthResult.Fail("Invalid Username or Password.");
             }
 
-            // Correct password: clear any earlier failures. (Skipped when there are none,
-            // to avoid a pointless database write on every normal login.)
             if (user.AccessFailedCount > 0)
             {
                 await _userManager.ResetAccessFailedCountAsync(user);
             }
 
-            // Only someone who proved they know the password gets to learn the account
-            // is unverified.
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
+                _logger.LogInformation("Login refused: email not verified for user {UserId}.", user.Id);
                 return AuthResult.Fail("Please verify your email before logging in.");
             }
 
             var token = await _tokenService.CreateToken(user);
+
+            _logger.LogInformation("User {UserId} logged in.", user.Id);
             return AuthResult.Success(token.ToString(), user.UserName!, user.Email!);
         }
 
-        // ─────────────────────────────────────────────────────────
-        // REGISTER
-        // Same idea: create the user, assign a role, send the verification email.
-        // All pure business/domain logic, zero HTTP awareness.
-        // ─────────────────────────────────────────────────────────
         public async Task<RegisterResult> RegisterAsync(string username, string email, string password)
         {
             var appUser = new ApplicationUser
@@ -99,37 +99,38 @@ namespace api.Services
                 Email = email,
             };
 
-            // Identity handles password hashing + uniqueness checks internally here.
             var createdUser = await _userManager.CreateAsync(appUser, password);
             if (!createdUser.Succeeded)
             {
-                // .Description turns Identity's IdentityError objects into plain strings
-                // so this service's return type doesn't force the controller (or anything
-                // else calling this service) to reference Identity-specific types.
-                return RegisterResult.Fail(createdUser.Errors.Select(e => e.Description));
+                var errors = createdUser.Errors.Select(e => e.Description).ToList();
+                _logger.LogWarning("Registration failed for {Username}: {Errors}", username, string.Join("; ", errors));
+                return RegisterResult.Fail(errors);
             }
 
-            // Every new user gets the "User" role by default — a business rule,
-            // which is exactly the kind of thing that belongs in the service, not the controller.
             var roleResult = await _userManager.AddToRoleAsync(appUser, "User");
             if (!roleResult.Succeeded)
             {
-                return RegisterResult.Fail(roleResult.Errors.Select(e => e.Description));
+                var errors = roleResult.Errors.Select(e => e.Description).ToList();
+
+                // Worth an Error: the account now EXISTS but has no role, so it needs a
+                // human to fix. Common cause: the "User" role was never seeded in the
+                // production database.
+                _logger.LogError(
+                    "User {UserId} was created but could not be given the 'User' role: {Errors}",
+                    appUser.Id, string.Join("; ", errors));
+                return RegisterResult.Fail(errors);
             }
 
-            // Generate a one-time email confirmation token and URL-encode it
-            // (raw tokens can contain characters that break URLs).
             var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
             var encodedEmailToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
 
             var frontendBaseUrl = _config["Frontend:BaseUrl"];
             var confirmationLink = $"{frontendBaseUrl}/verify-email?userId={appUser.Id}&token={encodedEmailToken}";
 
-            // Sending the email is a side-effect of "registering," so it lives here
-            // rather than in the controller — the controller shouldn't need to know
-            // that registration also triggers an email.
-            await _emailService.SendEmailAsync(
-                appUser.Email,
+            await SendLoggedEmailAsync(
+                appUser.Id,
+                "registration verification",
+                appUser.Email!,
                 "Verify your email - The Bearded Troll",
                 $@"
                 <h2>Welcome to The Bearded Troll!</h2>
@@ -137,24 +138,22 @@ namespace api.Services
                 <a href='{confirmationLink}' 
                    style='display:inline-block;padding:10px 20px;background-color:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;'>
                    Verify Email
-                </a>"
-            );
+                </a>");
 
+            _logger.LogInformation("User {UserId} registered; verification email sent.", appUser.Id);
             return RegisterResult.Success(appUser.UserName!, appUser.Email!);
         }
 
-        // ─────────────────────────────────────────────────────────
-        // AUTH STATUS
-        // Looks up the currently-authenticated user's info + roles.
-        // Returns null (rather than throwing) if somehow the email on the
-        // JWT claim doesn't match a real user — the controller turns that
-        // into a 401 rather than crashing with a NullReferenceException,
-        // which is what the original code was at risk of doing.
-        // ─────────────────────────────────────────────────────────
         public async Task<AuthStatusResult?> GetAuthStatusAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user == null) return null;
+            if (user == null)
+            {
+                // A valid token whose user no longer exists: a deleted account, or a
+                // signing key shared with another environment.
+                _logger.LogWarning("Auth status requested with a token for an email that has no account.");
+                return null;
+            }
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -167,15 +166,14 @@ namespace api.Services
             };
         }
 
-        // ─────────────────────────────────────────────────────────
-        // Everything below this line already existed and is UNCHANGED —
-        // included so the file is complete and you can see the whole class at once.
-        // ─────────────────────────────────────────────────────────
-
         public async Task<bool> SendEmailVerificationAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogInformation("Verification email requested for unknown user id {UserId}.", userId);
+                return false;
+            }
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
@@ -183,55 +181,131 @@ namespace api.Services
             var frontendUrl = _config["Frontend:BaseUrl"] ?? "http://localhost:5173";
             var confirmationLink = $"{frontendUrl}/verify-email?userId={user.Id}&token={encodedToken}";
 
-            await _emailService.SendEmailAsync(
-                user.Email,
+            await SendLoggedEmailAsync(
+                user.Id,
+                "verification",
+                user.Email!,
                 "Verify your email - The Bearded Troll",
-                $"<h2>Welcome to The Bearded Troll!</h2><p>Click below to verify your email:</p><a href='{confirmationLink}'>Verify Email</a>"
-            );
+                $"<h2>Welcome to The Bearded Troll!</h2><p>Click below to verify your email:</p><a href='{confirmationLink}'>Verify Email</a>");
 
+            _logger.LogInformation("Verification email sent to user {UserId}.", user.Id);
             return true;
         }
 
         public async Task<bool> VerifyEmailAsync(string userId, string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogWarning("Email verification attempted for unknown user id {UserId}.", userId);
+                return false;
+            }
 
-            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var decodedToken = TryDecodeToken(token);
+            if (decodedToken == null)
+            {
+                _logger.LogWarning("Email verification for user {UserId} failed: malformed token.", userId);
+                return false;
+            }
+
             var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("Email verification failed for user {UserId}: {Errors}",
+                    userId, string.Join("; ", result.Errors.Select(e => e.Description)));
+                return false;
+            }
 
-            return result.Succeeded;
+            _logger.LogInformation("User {UserId} verified their email.", userId);
+            return true;
         }
 
         public async Task<bool> SendPasswordResetLinkAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user == null) return false;
+            if (user == null)
+            {
+                // The email address itself is not logged (it is personal data).
+                _logger.LogInformation("Password reset requested for an email address with no account.");
+                return false;
+            }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
             var frontendUrl = _config["Frontend:BaseUrl"] ?? "http://localhost:5173";
-            var resetLink = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={encodedToken}";
+            var resetLink = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={encodedToken}";
 
-            await _emailService.SendEmailAsync(
-                user.Email,
+            await SendLoggedEmailAsync(
+                user.Id,
+                "password reset",
+                user.Email!,
                 "Reset your password - The Bearded Troll",
-                $"<p>Click below to reset your password:</p><a href='{resetLink}'>Reset Password</a>"
-            );
+                $"<p>Click below to reset your password:</p><a href='{resetLink}'>Reset Password</a>");
 
+            _logger.LogInformation("Password reset email sent to user {UserId}.", user.Id);
             return true;
         }
 
         public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user == null) return false;
+            if (user == null)
+            {
+                _logger.LogWarning("Password reset attempted for an email address with no account.");
+                return false;
+            }
 
-            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var decodedToken = TryDecodeToken(token);
+            if (decodedToken == null)
+            {
+                _logger.LogWarning("Password reset for user {UserId} failed: malformed token.", user.Id);
+                return false;
+            }
+
             var result = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("Password reset failed for user {UserId}: {Errors}",
+                    user.Id, string.Join("; ", result.Errors.Select(e => e.Description)));
+                return false;
+            }
 
-            return result.Succeeded;
+            _logger.LogInformation("Password was reset for user {UserId}.", user.Id);
+            return true;
+        }
+
+        // Sends an email, and if the email provider fails, records WHICH kind of email
+        // and for WHICH user before rethrowing (so behavior is unchanged: the caller
+        // still gets the exception). A silent email failure is one of the most common
+        // problems right after deploying, because production has different email
+        // settings from your machine.
+        private async Task SendLoggedEmailAsync(string userId, string purpose, string to, string subject, string htmlBody)
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(to, subject, htmlBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send {Purpose} email to user {UserId}.", purpose, userId);
+                throw;
+            }
+        }
+
+        // The tokens in emailed links come from the browser, so they can be truncated or
+        // tampered with. Base64UrlDecode throws FormatException on bad input, which
+        // used to surface as a 500. Now a bad token is just a failed verification/reset.
+        private static string? TryDecodeToken(string token)
+        {
+            try
+            {
+                return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
         }
     }
 }

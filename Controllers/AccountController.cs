@@ -12,10 +12,12 @@ namespace api.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IUserAccountService _userAccountService;
+        private readonly IWebHostEnvironment _env;
 
-        public AccountController(IUserAccountService userAccountService)
+        public AccountController(IUserAccountService userAccountService, IWebHostEnvironment env)
         {
             _userAccountService = userAccountService;
+            _env = env;
         }
 
         // One place that defines the auth cookie's flags. Login and Logout must use
@@ -50,8 +52,12 @@ namespace api.Controllers
             Response.Cookies.Append("access_token", result.Token!,
                 BuildAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(7)));
 
+            // The token is in the response body ONLY in Development, so it can be pasted
+            // into Swagger's Authorize button. In production it travels only in the
+            // HttpOnly cookie, which page scripts cannot read.
             return Ok(new
             {
+                token = _env.IsDevelopment() ? result.Token : null,
                 UserName = result.UserName,
                 Email = result.Email
             });

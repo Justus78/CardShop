@@ -18,8 +18,18 @@ using Microsoft.OpenApi.Models;
 using Stripe;
 using System.Security.Claims;
 using api.Extensions;
+using Azure.Monitor.OpenTelemetry.AspNetCore; // NEW: requires the NuGet package, see walkthrough
 
 var builder = WebApplication.CreateBuilder(args);
+
+// NEW: send logs, request traces, and SQL / HTTP call timings to Application Insights.
+// Only turned on when a connection string is configured. In Azure you set the
+// APPLICATIONINSIGHTS_CONNECTION_STRING app setting; on your machine it is absent,
+// so this is skipped and the app runs normally with no Azure resource needed.
+if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddOpenTelemetry().UseAzureMonitor();
+}
 
 
 builder.Services.AddControllers();
@@ -196,6 +206,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// NEW: must be FIRST. It rewrites the visitor's IP from the X-Forwarded-For header,
+// and everything below (the rate limiter, logging) should see the corrected value.
 app.UseForwardedHeaders();
 
 app.UseExceptionHandling();

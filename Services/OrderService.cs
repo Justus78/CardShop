@@ -116,6 +116,10 @@ namespace api.Services
                 return newOrder;
             });
 
+            _logger.LogInformation(
+                "Order {OrderId} created for user {UserId}: {LineCount} line(s), total {TotalAmount}. Stock reserved.",
+                order.Id, userId, order.OrderItems.Count, order.TotalAmount);
+
             // ── PHASE 2: Stripe. Stock + order are already committed. ──
             try
             {
@@ -146,6 +150,9 @@ namespace api.Services
                 order.PaymentIntentId = paymentIntent.Id;
                 await _unitOfWork.SaveChangesAsync();
 
+                _logger.LogInformation("PaymentIntent {PaymentIntentId} created for order {OrderId}.",
+                    paymentIntent.Id, order.Id);
+
                 return new CreateOrderResultDto
                 {
                     ClientSecret = paymentIntent.ClientSecret,
@@ -153,8 +160,14 @@ namespace api.Services
                     Order = MapToDto(order)
                 };
             }
-            catch (StripeException)
+            catch (StripeException ex)
             {
+                // Before this, the Stripe failure was only visible as a generic 500. This
+                // line says which order was affected and that the stock was released.
+                _logger.LogError(ex,
+                    "Stripe PaymentIntent creation failed for order {OrderId}; releasing the reserved stock and cancelling the order.",
+                    order.Id);
+
                 // Compensating action: Phase 1 already committed, so restore the
                 // stock and cancel the order by hand.
                 foreach (var item in order.OrderItems)
@@ -201,6 +214,9 @@ namespace api.Services
             order.PaidAt = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} marked Paid (PaymentIntent {PaymentIntentId}).",
+                order.Id, paymentIntentId);
         }
 
         // ─────────────────────────────────────────────────────────
@@ -286,6 +302,8 @@ namespace api.Services
                     if (await ReleaseOrderAsync(orderId, items))
                     {
                         releasedCount++;
+                        _logger.LogInformation(
+                            "Released abandoned order {OrderId}: stock restored and order cancelled.", orderId);
                     }
                 }
                 catch (Exception ex)
