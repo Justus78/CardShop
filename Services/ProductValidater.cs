@@ -14,10 +14,10 @@ namespace api.Services
         {
             var detailCount = new[]
             {
-            product.CardDetails != null,
-            product.SealedProductDetails != null,
-            product.AccessoryDetails != null
-        }.Count(present => present);
+                product.CardDetails != null,
+                product.SealedProductDetails != null,
+                product.AccessoryDetails != null
+            }.Count(present => present);
 
             if (detailCount == 0)
                 throw new ProductValidationException(

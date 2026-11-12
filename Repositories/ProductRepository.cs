@@ -7,10 +7,14 @@ using CardShop.Models;
 using Microsoft.EntityFrameworkCore;
 using static api.Enums.ProductEnums;
 
-namespace api.Repositories 
-{ 
+namespace api.Repositories
+{
     public class ProductRepository : IProductRepository
     {
+        // Largest page a caller can ask for. Without a cap, ?pageSize=1000000 would
+        // load the entire table in one request.
+        private const int MaxPageSize = 100;
+
         private readonly ApplicationDbContext _context;
 
         public ProductRepository(ApplicationDbContext context)
@@ -39,7 +43,11 @@ namespace api.Repositories
 
         public async Task<PagedResult<Product>> GetAllAsync(ProductQueryObject queryObject)
         {
+            // AsNoTracking: this listing is read-only, so EF doesn't need to keep a
+            // tracked copy of every row it returns. (GetByIdAsync below is deliberately
+            // NOT changed, because updates rely on it returning tracked entities.)
             IQueryable<Product> query = _context.Products
+                .AsNoTracking()
                 .Include(p => p.CardDetails)
                 .Include(p => p.SealedProductDetails)
                 .Include(p => p.AccessoryDetails);
@@ -93,19 +101,24 @@ namespace api.Repositories
 
             /* ---------- Pagination ---------- */
 
+            // Clamp what the caller sent. Page=0 used to produce a negative skip, which
+            // SQL Server rejects, so the request failed with a 500.
+            var page = Math.Max(1, queryObject.Page);
+            var pageSize = Math.Clamp(queryObject.PageSize, 1, MaxPageSize);
+
             var totalCount = await query.CountAsync();
 
             var items = await query
-                .Skip((queryObject.Page - 1) * queryObject.PageSize)
-                .Take(queryObject.PageSize)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return new PagedResult<Product>
             {
                 Items = items,
                 TotalCount = totalCount,
-                Page = queryObject.Page,
-                PageSize = queryObject.PageSize
+                Page = page,
+                PageSize = pageSize
             };
         } // end get all
 
@@ -119,6 +132,13 @@ namespace api.Repositories
         }
 
         public async Task<bool> SaveChangesAsync() => await _context.SaveChangesAsync() > 0;
+
+        // True if the product appears on ANY order line, in any order status. Used to
+        // block deleting products that have order history.
+        public async Task<bool> HasOrderHistoryAsync(int productId)
+        {
+            return await _context.Set<OrderItem>().AnyAsync(oi => oi.ProductId == productId);
+        }
 
         // Why this isn't just "read stock, check in C#, write stock":
         // That pattern has a race condition — two requests can both read StockQuantity
@@ -140,8 +160,8 @@ namespace api.Repositories
         // order) and a later call fails, the earlier ones have ALREADY been
         // committed to the database — you can't just "not call SaveChanges" to
         // undo them. This is exactly why OrderService wraps multiple calls to this
-        // method in an explicit transaction (via IUnitOfWork.BeginTransactionAsync),
-        // so a failure partway through can be properly rolled back.
+        // method in IUnitOfWork.ExecuteInTransactionAsync, so a failure partway
+        // through is properly rolled back.
         public async Task<bool> TryDecrementStockAsync(int productId, int quantity)
         {
             var rowsAffected = await _context.Products
@@ -167,5 +187,3 @@ namespace api.Repositories
         }
     }
 }
-
-

@@ -27,5 +27,9 @@ namespace api.Interfaces
         // Adds `quantity` back to stock. Used when an order fails, gets cancelled,
         // or expires after reserving stock at creation time.
         Task RestoreStockAsync(int productId, int quantity);
+
+        // True if the product appears on any order line, in any status.
+        // Used to refuse deleting products that have order history.
+        Task<bool> HasOrderHistoryAsync(int productId);
     }
 }
