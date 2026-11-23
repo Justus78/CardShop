@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using api.Middleware;
 using Microsoft.AspNetCore.RateLimiting;
@@ -13,6 +14,7 @@ namespace api.Extensions
         // Policy names, referenced by [EnableRateLimiting(...)] on controller actions.
         public const string AuthAttemptsPolicy = "auth-attempts";
         public const string EmailSendingPolicy = "email-sending";
+        public const string OrderCreationPolicy = "order-creation";
 
         public static IServiceCollection AddAuthRateLimiting(this IServiceCollection services)
         {
@@ -52,6 +54,27 @@ namespace api.Extensions
                             SegmentsPerWindow = 5,
                             QueueLimit = 0
                         }));
+
+                // Order creation: 5 per 10 minutes PER USER. Every request reserves stock and
+                // creates a Stripe PaymentIntent, so this limits stock-hoarding and Stripe
+                // API abuse. It is keyed on the logged-in user, which means
+                // UseRateLimiter() must run AFTER UseAuthentication() (see Program.cs),
+                // or the user is not known yet. It falls back to the IP if there is no user.
+                options.AddPolicy(OrderCreationPolicy, context =>
+                {
+                    var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var key = userId != null ? $"user:{userId}" : $"ip:{GetClientKey(context)}";
+
+                    return RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: key,
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+                            Window = TimeSpan.FromMinutes(10),
+                            SegmentsPerWindow = 5,
+                            QueueLimit = 0
+                        });
+                });
 
                 // What a rejected request gets back. Uses the same ErrorResponse shape
                 // (and the same serializer, so the same property casing) as the

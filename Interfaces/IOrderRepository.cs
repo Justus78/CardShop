@@ -22,5 +22,8 @@ namespace api.Interfaces
         // still Pending in the database right now. Returns true if it changed.
         // Used by the sweep so it can't cancel an order that was just paid.
         Task<bool> TryCancelPendingOrderAsync(int orderId);
+
+        // How many unpaid (Pending) orders this user currently holds.
+        Task<int> CountPendingOrdersAsync(string userId);
     }
 }

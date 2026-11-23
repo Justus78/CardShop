@@ -10,6 +10,13 @@ namespace api.Services
 {
     public class OrderService : IOrderService
     {
+        // The most unpaid (Pending) orders one user may hold at once. Every Pending order
+        // reserves stock until it is paid or expires (about 30 minutes), so without a limit
+        // one account could tie up the whole inventory by starting checkouts it never pays
+        // for. It is a soft limit: two requests at the very same instant could both pass
+        // the check, which the order-creation rate limit keeps small.
+        private const int MaxPendingOrdersPerUser = 3;
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
         private readonly ILogger<OrderService> _logger;
@@ -40,6 +47,21 @@ namespace api.Services
             // "decrement by -5" would INCREASE stock, and the total could go negative.
             if (dto.Items.Any(i => i.Quantity <= 0))
                 throw new BusinessRuleException("Item quantities must be greater than zero.");
+
+            // ── Abuse protection: limit how many unpaid orders one user can hold ──
+            var pendingCount = await _unitOfWork.OrderRepository.CountPendingOrdersAsync(userId);
+            if (pendingCount >= MaxPendingOrdersPerUser)
+            {
+                _logger.LogWarning(
+                    "User {UserId} was refused a new order: they already hold {PendingCount} unpaid orders.",
+                    userId, pendingCount);
+
+                // (If the expiration window in OrderExpirationBackgroundService changes
+                // from 30 minutes, update the number in this message.)
+                throw new BusinessRuleException(
+                    $"You already have {pendingCount} unpaid orders waiting for payment. " +
+                    "Please complete one, or try again later. Unpaid orders are released automatically after about 30 minutes.");
+            }
 
             // Merge repeated lines for the same product so each product is
             // reserved once, with its combined quantity.
@@ -77,12 +99,6 @@ namespace api.Services
                         throw new BusinessRuleException(product == null
                             ? $"Product {line.ProductId} was not found."
                             : $"Not enough stock for '{product.Name}'. Available: {product.StockQuantity}, Requested: {line.Quantity}");
-                    }
-
-                    // If that took stock to 0, remove the product from other users' carts.
-                    if (product.StockQuantity == 0)
-                    {
-                        await _unitOfWork.OrderRepository.RemoveStaleCartItemsAsync(line.ProductId, userId);
                     }
 
                     orderItems.Add(new OrderItem
@@ -127,9 +143,15 @@ namespace api.Services
 
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount = (long)(order.TotalAmount * 100),
+                    // Rounded rather than truncated, so a value like 19.995 can't lose a cent.
+                    Amount = (long)Math.Round(order.TotalAmount * 100, MidpointRounding.AwayFromZero),
                     Currency = "usd",
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
+
+                    // Lets you find the order from the Stripe dashboard. If a payment ever
+                    // arrives with no matching order, this says which order it was for.
+                    Metadata = new Dictionary<string, string> { ["orderId"] = order.Id.ToString() },
+
                     Shipping = new ChargeShippingOptions
                     {
                         Name = order.RecipientName,
@@ -220,6 +242,21 @@ namespace api.Services
 
             order.Status = OrderStatus.Paid;
             order.PaidAt = DateTime.UtcNow;
+
+            // Stock was already reserved when the order was created, so nothing to subtract
+            // here. But if this purchase took a product's stock to zero, the sale is now
+            // permanent, so remove that product from OTHER users' carts.
+            //
+            // This used to run at reservation time. That emptied other people's carts even
+            // if the order was later abandoned and the stock came back, and let anyone
+            // clear a product out of every cart just by reserving the last units unpaid.
+            foreach (var item in order.OrderItems)
+            {
+                if (item.Product != null && item.Product.StockQuantity == 0)
+                {
+                    await _unitOfWork.OrderRepository.RemoveStaleCartItemsAsync(item.ProductId, order.UserId!);
+                }
+            }
 
             await _unitOfWork.SaveChangesAsync();
 
@@ -357,20 +394,46 @@ namespace api.Services
             return order == null ? null : MapToDto(order);
         }
 
+        // Which status changes an ADMIN may make by hand. Deliberately small.
+        //
+        // Setting Cancelled/Failed here would NOT give back the stock the order reserved
+        // (only the expiration sweep and the Stripe-failure path release stock), and
+        // moving a cancelled order back to Pending/Paid would sell stock that was already
+        // released. Pending orders belong to Stripe and the sweep, so an admin can't mark
+        // one Paid either. Cancelling a PAID order needs a refund flow, which is
+        // intentionally not offered yet.
+        private static readonly Dictionary<OrderStatus, OrderStatus[]> AdminAllowedTransitions = new()
+        {
+            [OrderStatus.Paid] = new[] { OrderStatus.Shipped },
+            [OrderStatus.Shipped] = new[] { OrderStatus.Paid }, // undo a mistaken "shipped"
+        };
+
         public async Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
         {
             var order = await _unitOfWork.OrderRepository.GetByIdAsync(orderId);
             if (order == null) return false;
 
+            if (order.Status == newStatus) return true; // nothing to change
+
+            if (!AdminAllowedTransitions.TryGetValue(order.Status, out var allowed) || !allowed.Contains(newStatus))
+            {
+                // BusinessRuleException becomes a 400 through the global exception middleware.
+                throw new BusinessRuleException(
+                    $"An order that is {order.Status} cannot be changed to {newStatus}.");
+            }
+
+            var oldStatus = order.Status;
             order.Status = newStatus;
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} status changed from {OldStatus} to {NewStatus}.",
+                orderId, oldStatus, newStatus);
+
             return true;
         }
 
         private static OrderDto MapToDto(Order order)
         {
-            // Pre-existing caveat: order.User may not be loaded on a freshly
-            // created order, so Username can come back null there.
             return new OrderDto
             {
                 Id = order.Id,

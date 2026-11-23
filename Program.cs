@@ -221,8 +221,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter(); // after authentication so per-user limits (order creation) know who is calling
 app.UseAuthorization();
 
 app.MapControllers();

@@ -20,7 +20,9 @@ namespace api.Repositories
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
-            // reload with related data so callers (service -> mapper) never hit nulls
+            // reload with related data so callers (service -> mapper) never hit nulls.
+            // Because the new order is already tracked, EF links the loaded User and
+            // Product objects onto it, so the order the caller still holds is populated too.
             return await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
@@ -28,9 +30,13 @@ namespace api.Repositories
                 .FirstAsync(o => o.Id == order.Id);
         }
 
+        // Customer-facing reads below use AsNoTracking: they only display data and never
+        // modify what they load. The methods that DO modify orders (the admin overload
+        // and the payment-intent lookup) stay tracked on purpose.
         public async Task<Order?> GetByIdAsync(int orderId, string userId)
         {
             return await _context.Orders
+                .AsNoTracking()
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
@@ -58,6 +64,7 @@ namespace api.Repositories
         public async Task<List<Order>> GetForUserAsync(string userId)
         {
             return await _context.Orders
+                .AsNoTracking()
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
@@ -77,6 +84,14 @@ namespace api.Repositories
             _context.CartItems.RemoveRange(cartItems);
         }
 
+        // How many unpaid orders this user currently holds. Used to cap how much stock
+        // one account can keep reserved at once.
+        public async Task<int> CountPendingOrdersAsync(string userId)
+        {
+            return await _context.Orders
+                .CountAsync(o => o.UserId == userId && o.Status == OrderStatus.Pending);
+        }
+
         // Include(o => o.OrderItems) matters here: the background service needs each
         // stale order's line items (ProductId + Quantity) to know what stock to
         // restore. Without the Include, OrderItems would be empty/not loaded and
@@ -88,7 +103,6 @@ namespace api.Repositories
                 .Where(o => o.Status == OrderStatus.Pending && o.CreatedDate < olderThan)
                 .ToListAsync();
         }
-
 
         // Same idea as TryDecrementStockAsync: the "is it still Pending?" check and the
         // write happen in ONE SQL statement:
