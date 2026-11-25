@@ -161,6 +161,8 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddMemoryCache(); // used by SetService to cache the public set list
+
 builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 
 // configuration for stripe

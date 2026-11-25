@@ -54,4 +54,11 @@ namespace api.Exceptions
     {
         public BusinessRuleException(string message) : base(message, StatusCodes.Status400BadRequest) { }
     }
+
+    // Throw when an outside service we depend on (Scryfall, for example) is down,
+    // times out, or sends back something unusable. -> 502 Bad Gateway
+    public class ExternalServiceException : ApiException
+    {
+        public ExternalServiceException(string message) : base(message, StatusCodes.Status502BadGateway) { }
+    }
 }

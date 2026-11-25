@@ -15,6 +15,7 @@ namespace api.Extensions
         public const string AuthAttemptsPolicy = "auth-attempts";
         public const string EmailSendingPolicy = "email-sending";
         public const string OrderCreationPolicy = "order-creation";
+        public const string PublicReadsPolicy = "public-reads";
 
         public static IServiceCollection AddAuthRateLimiting(this IServiceCollection services)
         {
@@ -52,6 +53,21 @@ namespace api.Extensions
                             PermitLimit = 5,
                             Window = TimeSpan.FromMinutes(15),
                             SegmentsPerWindow = 5,
+                            QueueLimit = 0
+                        }));
+
+                // Public read endpoints (browsing sets, and later products): 120 per minute per
+                // IP. That is far above what a person clicking around produces, and it stops
+                // a script from hammering the database. Raise it if people sharing one network
+                // (an office, a school, a mobile carrier) run into it in normal use.
+                options.AddPolicy(PublicReadsPolicy, context =>
+                    RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: GetClientKey(context),
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 120,
+                            Window = TimeSpan.FromMinutes(1),
+                            SegmentsPerWindow = 6,
                             QueueLimit = 0
                         }));
 
